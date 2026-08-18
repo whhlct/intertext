@@ -141,7 +141,7 @@ Common commands should be run from the repository root.
 Install/synchronize the Python environment:
 
 ```bash
-uv sync
+uv sync --all-packages
 ```
 
 Run the backend:
@@ -177,6 +177,53 @@ uv add --package intertext-ingest <dependency>
 The exact package names should match the `[project].name` values in each workspace member's `pyproject.toml`.
 
 Commit `uv.lock` to version control.
+
+## Local development
+
+Prerequisites are uv, Node.js 22 LTS (see `.nvmrc`), npm, and Docker with Docker Compose.
+
+Create local configuration and install dependencies from the committed lockfiles:
+
+```bash
+cp .env.example .env
+uv sync --all-packages --frozen
+npm --prefix frontend ci
+```
+
+Start PostgreSQL, then apply database migrations:
+
+```bash
+docker compose up -d postgres
+uv run --package intertext-backend alembic --config backend/alembic.ini upgrade head
+```
+
+Phase 0 intentionally contains no schema revision; the Alembic command establishes the migration workflow for Phase 1.
+
+Run the backend and frontend in separate terminals:
+
+```bash
+uv run --package intertext-backend uvicorn app.main:app --reload
+npm --prefix frontend run dev
+```
+
+The API health check is available at `http://localhost:8000/health`, and the frontend is available at `http://localhost:3000`.
+
+Run the Phase 0 checks:
+
+```bash
+uv run --package intertext-backend pytest backend/tests
+npm --prefix frontend test
+npm --prefix frontend run typecheck
+npm --prefix frontend run build
+docker compose config --quiet
+uv lock --check
+```
+
+Stop PostgreSQL without deleting its named data volume:
+
+```bash
+docker compose down
+```
 
 ## Architectural invariants
 

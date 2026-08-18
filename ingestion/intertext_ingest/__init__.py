@@ -1,0 +1,2 @@
+"""Intertext ingestion package."""
+
