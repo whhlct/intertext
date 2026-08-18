@@ -197,7 +197,7 @@ docker compose up -d postgres
 uv run --package intertext-backend alembic --config backend/alembic.ini upgrade head
 ```
 
-Phase 0 intentionally contains no schema revision; the Alembic command establishes the migration workflow for Phase 1.
+The initial migration creates the canonical Phase 1 backend schema. It does not insert corpus data.
 
 Run the backend and frontend in separate terminals:
 
@@ -224,6 +224,26 @@ Stop PostgreSQL without deleting its named data volume:
 ```bash
 docker compose down
 ```
+
+## Phase 1 backend API
+
+The backend exposes the corpus-neutral reader foundation at:
+
+```http
+GET /api/v1/texts
+GET /api/v1/texts/{text_slug}/versions
+GET /api/v1/reader/{text_slug}/{reference}
+```
+
+Select reader versions with repeated `version` query parameters:
+
+```http
+GET /api/v1/reader/bible/Mark%201?version=greek&version=english
+```
+
+If no versions are requested, the reader returns all versions that have a current release. Reader output is organized by canonical unit; each version key contains a list of mapped segments so split and merged source boundaries do not require 1:1 alignment.
+
+The API returns an empty library until the separate ingestion package populates corpus data.
 
 ## Architectural invariants
 
