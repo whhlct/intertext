@@ -241,6 +241,7 @@ The backend exposes the corpus-neutral reader foundation at:
 ```http
 GET /api/v1/texts
 GET /api/v1/texts/{text_slug}/versions
+GET /api/v1/texts/{text_slug}/versions/available?reference=Mark%201
 GET /api/v1/texts/{text_slug}/structure
 GET /api/v1/texts/{text_slug}/structure/{node_id}/children
 GET /api/v1/texts/{text_slug}/references/resolve?reference=Mark%201

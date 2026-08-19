@@ -24,6 +24,23 @@ Lists versions of a conceptual text, including language metadata and the current
 
 Returns `404` when `text_slug` does not exist.
 
+### `GET /api/v1/texts/{text_slug}/versions/available`
+
+Lists versions whose current release has at least one segment mapped to a
+canonical unit in the requested section. The section is supplied with the
+required `reference` query parameter and uses the same reference resolution as
+the reader.
+
+```http
+GET /api/v1/texts/bible/versions/available?reference=Mark%201
+```
+
+This endpoint reports content availability, not complete range coverage. A
+version with mapped content for only part of the requested range is included.
+It returns an empty list when the reference is valid but no current version has
+mapped content, `404` when the text or reference is unknown, and `422` when the
+resolved canonical range is invalid.
+
 ## Structure navigation
 
 ### `GET /api/v1/texts/{text_slug}/structure`

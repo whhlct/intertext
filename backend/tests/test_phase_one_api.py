@@ -1,7 +1,15 @@
 import asyncio
 
 from app.main import app
+from app.models import (
+    SegmentUnitMapping,
+    TextVersion,
+    VersionRelease,
+    VersionSegment,
+)
 from httpx import ASGITransport, AsyncClient, Response
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 
 def request(path: str) -> Response:
@@ -26,6 +34,45 @@ def test_lists_texts_and_current_versions(
         "english",
         "greek",
     }
+
+
+def test_lists_versions_with_content_in_a_reference_range(
+    canonical_fixture: None,
+    database_session: Session,
+) -> None:
+    greek_segment_ids = (
+        select(VersionSegment.id)
+        .join(
+            VersionRelease,
+            VersionRelease.id == VersionSegment.version_release_id,
+        )
+        .join(TextVersion, TextVersion.id == VersionRelease.version_id)
+        .where(TextVersion.slug == "greek")
+    )
+    database_session.execute(
+        delete(SegmentUnitMapping).where(
+            SegmentUnitMapping.segment_id.in_(greek_segment_ids)
+        )
+    )
+    database_session.commit()
+
+    response = request(
+        "/api/v1/texts/bible/versions/available?reference=Mark%201"
+    )
+
+    assert response.status_code == 200
+    assert [version["slug"] for version in response.json()] == ["english"]
+
+
+def test_available_versions_rejects_unknown_reference(
+    canonical_fixture: None,
+) -> None:
+    response = request(
+        "/api/v1/texts/bible/versions/available?reference=Unknown"
+    )
+
+    assert response.status_code == 404
+    assert "Reference 'Unknown' was not found" in response.json()["detail"]
 
 
 def test_reader_resolves_and_aligns_selected_versions(
