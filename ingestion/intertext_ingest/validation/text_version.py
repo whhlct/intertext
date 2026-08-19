@@ -4,15 +4,10 @@ from app.models import SegmentUnitMapping, VersionRelease, VersionSegment
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from intertext_ingest.normalized import NormalizedVersion
+from intertext_ingest.normalized import NormalizedVersion, ResolvedVersion
 
 
-def validate_normalized_version(
-    version: NormalizedVersion,
-    *,
-    required_reference_keys: tuple[str, ...] = (),
-    require_unique_references: bool = False,
-) -> None:
+def validate_normalized_version(version: NormalizedVersion) -> None:
     if not version.segments:
         raise ValueError(f"Normalized version has no segments: {version.slug}")
     expected_sequences = list(range(1, len(version.segments) + 1))
@@ -22,29 +17,35 @@ def validate_normalized_version(
     if any(not segment.text.strip() for segment in version.segments):
         raise ValueError(f"Empty segment text in {version.slug}")
     if any(
-        segment.language_iso != version.language_iso for segment in version.segments
+        segment.language_iso != version.definition.language_iso
+        for segment in version.segments
     ):
         raise ValueError(f"Mixed or incorrect segment languages in {version.slug}")
-
-    references = [segment.reference.key for segment in version.segments]
-    if require_unique_references and len(references) != len(set(references)):
+    source_references = [
+        (segment.source_reference.scheme, segment.source_reference.label)
+        for segment in version.segments
+    ]
+    if len(source_references) != len(set(source_references)):
         raise ValueError(f"Duplicate source references in {version.slug}")
-    missing = sorted(set(required_reference_keys) - set(references))
+
+
+def validate_resolved_version(version: ResolvedVersion) -> None:
+    expected_sequences = list(range(1, len(version.segments) + 1))
+    actual_sequences = [item.segment.sequence for item in version.segments]
+    if actual_sequences != expected_sequences:
+        raise ValueError(f"Non-contiguous resolved ordering in {version.version.slug}")
+    missing = [
+        item.segment.source_reference.label
+        for item in version.segments
+        if not item.canonical_targets
+    ]
     if missing:
         raise ValueError(
-            f"Required references missing from {version.slug}: {', '.join(missing)}"
+            f"Segments lack canonical targets in {version.version.slug}: "
+            + ", ".join(missing[:5])
         )
-    if version.slug == "kjv":
-        leaked_markers = [
-            segment.source_reference
-            for segment in version.segments
-            if "\\w" in segment.text or "strong=" in segment.text
-        ]
-        if leaked_markers:
-            raise ValueError(
-                "Strong's/USFM markers leaked into KJV plain text at: "
-                + ", ".join(leaked_markers[:5])
-            )
+    if any(not item.identifier.strip() for item in version.segments):
+        raise ValueError(f"Empty resolved identifier in {version.version.slug}")
 
 
 def validate_persisted_release(

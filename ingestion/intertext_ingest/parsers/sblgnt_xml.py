@@ -1,3 +1,4 @@
+import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -5,54 +6,41 @@ from defusedxml import ElementTree
 
 from intertext_ingest.normalized import (
     AcquiredSource,
-    NormalizedSegment,
-    NormalizedVersion,
-)
-from intertext_ingest.normalizers.references import (
-    bible_reference_from_label,
-    bible_reference_sort_key,
+    ParsedSegment,
+    ParsedSource,
+    SourceReference,
 )
 from intertext_ingest.normalizers.text import normalize_plain_text
 
+_VERSE_LABEL = re.compile(r"^(.+?)\s+(\d+):(\d+)$")
+
 
 class SblgntXmlParser:
+    """Parse SBLGNT XML without assigning canonical Bible identities."""
+
     PARSER_VERSION = "sblgnt-xml-1"
 
-    def parse(self, source: AcquiredSource) -> NormalizedVersion:
-        segments: list[NormalizedSegment] = []
-        for path in source.content_path.glob("*.xml"):
+    def parse(self, source: AcquiredSource) -> ParsedSource:
+        segments: list[ParsedSegment] = []
+        for path in sorted(source.content_path.glob("*.xml")):
             root = ElementTree.parse(path).getroot()
             if root.tag != "book":
                 continue
             segments.extend(self._parse_book(path, root))
         if not segments:
             raise ValueError(f"No SBLGNT book XML files found in {source.content_path}")
-        segments.sort(key=lambda segment: bible_reference_sort_key(segment.reference))
         ordered_segments = tuple(
             replace(segment, sequence=index)
             for index, segment in enumerate(segments, start=1)
         )
-        return NormalizedVersion(
-            slug="sblgnt",
-            title="SBL Greek New Testament",
-            abbreviation="SBLGNT",
-            language_iso="grc",
-            language_name="Ancient Greek",
-            language_native_name="Ἑλληνική",
-            script="Grek",
-            direction="ltr",
-            version_type="critical_edition",
+        return ParsedSource(
             source=source.metadata,
+            parser_version=self.PARSER_VERSION,
             segments=ordered_segments,
-            publisher="Society of Biblical Literature and Logos Bible Software",
-            rights_statement=(
-                "Copyright 2010 Society of Biblical Literature and Logos Bible "
-                "Software; licensed CC BY 4.0."
-            ),
         )
 
-    def _parse_book(self, path: Path, root) -> list[NormalizedSegment]:
-        segments: list[NormalizedSegment] = []
+    def _parse_book(self, path: Path, root) -> list[ParsedSegment]:
+        segments: list[ParsedSegment] = []
         current_label: str | None = None
         elements: list[dict[str, str]] = []
 
@@ -60,27 +48,22 @@ class SblgntXmlParser:
             nonlocal current_label, elements
             if current_label is None:
                 return
-            reference = bible_reference_from_label(current_label)
+            source_reference = self._source_reference(current_label)
             text = self._render_elements(elements)
             if not text:
                 raise ValueError(
                     f"SBLGNT verse normalized to empty text: {current_label}"
                 )
             segments.append(
-                NormalizedSegment(
+                ParsedSegment(
                     sequence=0,
-                    language_iso="grc",
                     text=text,
-                    source_reference=current_label,
-                    reference=reference,
+                    source_reference=source_reference,
                     content_markup={
                         "source_format": "sblgnt_xml",
                         "elements": list(elements),
                     },
-                    metadata={
-                        "source_file": path.name,
-                        "parser_version": self.PARSER_VERSION,
-                    },
+                    metadata={"source_file": path.name},
                 )
             )
             current_label = None
@@ -105,6 +88,21 @@ class SblgntXmlParser:
                     )
         flush()
         return segments
+
+    @staticmethod
+    def _source_reference(label: str) -> SourceReference:
+        match = _VERSE_LABEL.fullmatch(label.strip())
+        if match is None:
+            raise ValueError(f"Invalid SBLGNT verse identifier: {label}")
+        return SourceReference(
+            scheme="sblgnt",
+            label=label,
+            components={
+                "book_name": match.group(1),
+                "chapter": int(match.group(2)),
+                "verse": int(match.group(3)),
+            },
+        )
 
     @staticmethod
     def _render_elements(elements: list[dict[str, str]]) -> str:

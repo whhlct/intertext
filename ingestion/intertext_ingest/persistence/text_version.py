@@ -11,69 +11,68 @@ from app.models import (
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from intertext_ingest.mapping.base import CanonicalMapper
-from intertext_ingest.normalized import ImportResult, NormalizedVersion
+from intertext_ingest.corpora.base import CanonicalMappingResult
+from intertext_ingest.normalized import ImportResult, ResolvedVersion
 
 
 class TextVersionPersistence:
     IMPORTER_VERSION = "intertext-ingest-1"
 
-    def __init__(self, mapper: CanonicalMapper) -> None:
-        self.mapper = mapper
-
     def persist(
         self,
         session: Session,
         dataset: str,
-        version: NormalizedVersion,
+        resolved: ResolvedVersion,
+        mapping: CanonicalMappingResult,
         *,
         preferred_role: str | None = None,
     ) -> ImportResult:
+        version = resolved.version
+        definition = version.definition
         language = session.scalar(
-            select(Language).where(Language.iso_code == version.language_iso)
+            select(Language).where(Language.iso_code == definition.language_iso)
         )
         if language is None:
             language = Language(
-                iso_code=version.language_iso,
-                name=version.language_name,
-                native_name=version.language_native_name,
-                script=version.script,
-                direction=version.direction,
+                iso_code=definition.language_iso,
+                name=definition.language_name,
+                native_name=definition.language_native_name,
+                script=definition.script,
+                direction=definition.direction,
             )
             session.add(language)
             session.flush()
 
-        mapping = self.mapper.map_segments(session, version.segments)
         conceptual_text = session.get(Text, mapping.text_id)
         if conceptual_text is None:
             raise ValueError(f"Mapped conceptual text was not found: {mapping.text_id}")
         text_version = session.scalar(
             select(TextVersion).where(
                 TextVersion.text_id == mapping.text_id,
-                TextVersion.slug == version.slug,
+                TextVersion.slug == definition.slug,
             )
         )
         if text_version is None:
             text_version = TextVersion(
                 text_id=mapping.text_id,
-                slug=version.slug,
-                title=version.title,
-                abbreviation=version.abbreviation,
+                slug=definition.slug,
+                title=definition.title,
+                abbreviation=definition.abbreviation,
                 default_language_id=language.id,
                 reference_scheme_id=conceptual_text.default_reference_scheme_id,
-                version_type=version.version_type,
+                version_type=definition.version_type,
             )
             session.add(text_version)
             session.flush()
-        text_version.title = version.title
-        text_version.abbreviation = version.abbreviation
+        text_version.title = definition.title
+        text_version.abbreviation = definition.abbreviation
         text_version.default_language_id = language.id
         text_version.reference_scheme_id = conceptual_text.default_reference_scheme_id
-        text_version.version_type = version.version_type
-        text_version.publisher = version.publisher
+        text_version.version_type = definition.version_type
+        text_version.publisher = definition.publisher
         text_version.source_name = version.source.provider
         text_version.license = version.source.license
-        text_version.rights_statement = version.rights_statement
+        text_version.rights_statement = definition.rights_statement
         text_version.source_url = version.source.source_locator
 
         existing_release = session.scalar(
@@ -127,23 +126,19 @@ class TextVersionPersistence:
             metadata_={
                 "source": version.source.as_dict(),
                 "importer_version": self.IMPORTER_VERSION,
-                "parser_versions": sorted(
-                    {
-                        str(segment.metadata.get("parser_version", "unknown"))
-                        for segment in version.segments
-                    }
-                ),
+                "parser_versions": [version.parser_version],
             },
         )
         session.add(release)
         session.flush()
 
         stored_segments: list[tuple[VersionSegment, tuple]] = []
-        for segment in version.segments:
-            unit_ids = mapping.unit_ids_by_reference.get(segment.reference.key)
+        for resolved_segment in resolved.segments:
+            segment = resolved_segment.segment
+            unit_ids = mapping.unit_ids_by_segment.get(segment.sequence)
             if not unit_ids:
                 raise ValueError(
-                    f"No canonical mapping for segment: {segment.source_reference}"
+                    f"No canonical mapping for segment: {resolved_segment.identifier}"
                 )
             stored_segment = VersionSegment(
                 version_release_id=release.id,
@@ -151,7 +146,7 @@ class TextVersionPersistence:
                 sequence=segment.sequence,
                 text_plain=segment.text,
                 content_markup=segment.content_markup,
-                source_identifier=segment.source_reference,
+                source_identifier=resolved_segment.identifier,
                 metadata_=segment.metadata,
             )
             session.add(stored_segment)
@@ -177,7 +172,7 @@ class TextVersionPersistence:
                 session,
                 mapping.text_id,
                 text_version,
-                mapping.unit_ids_by_reference,
+                mapping.unit_ids_by_segment,
                 preferred_role,
             )
         return ImportResult(
@@ -194,12 +189,10 @@ class TextVersionPersistence:
         session: Session,
         text_id,
         text_version: TextVersion,
-        unit_ids_by_reference: dict,
+        unit_ids_by_segment: dict,
         role: str,
     ) -> None:
-        unit_ids = [
-            unit_id for ids in unit_ids_by_reference.values() for unit_id in ids
-        ]
+        unit_ids = [unit_id for ids in unit_ids_by_segment.values() for unit_id in ids]
         units = list(
             session.scalars(select(CanonicalUnit).where(CanonicalUnit.id.in_(unit_ids)))
         )

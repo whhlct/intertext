@@ -13,7 +13,11 @@ source acquisition
     → validation
 ```
 
-Providers and formats are independent. The eBible adapter happens to deliver USFM, while the Faithlife Git adapter happens to deliver SBLGNT XML. Persistence receives only `NormalizedVersion` and `NormalizedSegment` records plus canonical mappings; it contains no provider- or format-specific behavior.
+Providers, formats, and corpora are independent. The eBible adapter happens to deliver USFM, while the Faithlife Git adapter happens to deliver SBLGNT XML. Format parsers emit `SourceReference` values (`usfm` or `sblgnt`) and do not construct Intertext Bible references. The configured Bible corpus mapper interprets those values, applies the explicit Protestant 66-book canon used by these datasets, and emits resolved canonical targets. Persistence receives only the resolved version and canonical unit IDs; it contains no provider-, format-, or corpus-specific behavior.
+
+Corpus resolution happens before persistence. Consequently both `MRK 1:1` from USFM and `Mark 1:1` from SBLGNT persist as the canonical segment identifier `Mark 1:1`, target `bible.mark.1.1`, and structure path `bible.mark.1`. Parser-native identifiers remain confined to the in-memory parsed representation and the preserved raw artifact.
+
+Version metadata such as language, script, direction, title, and rights belongs to the dataset definition rather than reusable parsers. Generic normalization is limited to Unicode, whitespace, text, and markup cleanup. Generic validation checks segment ordering, duplicates, empty content, and resolved mappings; Bible coverage and testament expectations are checked under `corpora/bible/validation.py`.
 
 ## Supported datasets
 
@@ -86,9 +90,11 @@ An already imported version/checksum is a no-op. A new checksum creates a new im
 
 Implement the `SourceAdapter` acquisition protocol and register a `DatasetDefinition` with the existing parser. For example, a publisher API returning USFM would require a new source adapter but would reuse `UsfmParser`, normalization, mapping, persistence, and validation.
 
+`HttpZipSource`, `GitRepositorySource`, and `LocalSource` are currently available. None interprets textual references or canonical structure.
+
 ### New format
 
-Implement the `SourceParser` protocol so it emits the common normalized records. Acquisition adapters, persistence, and release provenance do not change. Format-specific fields belong in normalized metadata or semantic markup, not in persistence code.
+Implement the `SourceParser` protocol so it emits `ParsedSource` records containing generic segments and format-native `SourceReference` values. Add the corresponding source-reference interpretation to the responsible corpus mapper. Acquisition adapters, persistence, and release provenance do not change. Format-specific fields belong in source-reference components, normalized metadata, or semantic markup, not in persistence code.
 
 ### Different corpus
 

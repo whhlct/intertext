@@ -3,25 +3,19 @@ from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
 from intertext_ingest.parsers.usfm import UsfmParser
 
 
-def make_kjv_parser() -> UsfmParser:
-    return UsfmParser(
-        slug="kjv",
-        title="King James Version",
-        abbreviation="KJV",
-        language_iso="en",
-        language_name="English",
-        version_type="translation",
-    )
-
-
-def test_usfm_parser_normalizes_text_and_preserves_strongs(
+def test_usfm_parser_emits_source_references_and_preserves_strongs(
     kjv_source: AcquiredSource,
 ) -> None:
-    version = make_kjv_parser().parse(kjv_source)
+    parsed = UsfmParser().parse(kjv_source)
 
-    assert len(version.segments) == 3
-    first = version.segments[0]
-    assert first.reference.key == "bible.mrk.1.1"
+    assert len(parsed.segments) == 3
+    first = parsed.segments[0]
+    assert first.source_reference.scheme == "usfm"
+    assert first.source_reference.components == {
+        "book_code": "MRK",
+        "chapter": 1,
+        "verse": 1,
+    }
     assert first.text == (
         "The beginning of the gospel of Jesus Christ, the Son of God;"
     )
@@ -31,18 +25,24 @@ def test_usfm_parser_normalizes_text_and_preserves_strongs(
     }
     assert "\\w" not in first.text
     assert "strong=" not in first.text
-    assert version.segments[1].content_markup["character_styles"] == ["wj"]
-    assert version.segments[2].content_markup["omitted_footnote_count"] == 1
+    assert parsed.segments[1].content_markup["character_styles"] == ["wj"]
+    assert parsed.segments[2].content_markup["omitted_footnote_count"] == 1
+    assert not hasattr(parsed, "language_iso")
 
 
-def test_sblgnt_xml_parser_emits_the_same_normalized_shape(
+def test_sblgnt_xml_parser_emits_source_references(
     sblgnt_source: AcquiredSource,
 ) -> None:
-    version = SblgntXmlParser().parse(sblgnt_source)
+    parsed = SblgntXmlParser().parse(sblgnt_source)
 
-    assert len(version.segments) == 3
-    first = version.segments[0]
-    assert first.reference.key == "bible.mrk.1.1"
+    assert len(parsed.segments) == 3
+    first = parsed.segments[0]
+    assert first.source_reference.scheme == "sblgnt"
+    assert first.source_reference.components == {
+        "book_name": "Mark",
+        "chapter": 1,
+        "verse": 1,
+    }
     assert first.text == "Ἀρχὴ τοῦ εὐαγγελίου Ἰησοῦ ⸀χριστοῦ."
     assert first.content_markup["source_format"] == "sblgnt_xml"
     assert {element["type"] for element in first.content_markup["elements"]} == {
@@ -50,3 +50,4 @@ def test_sblgnt_xml_parser_emits_the_same_normalized_shape(
         "suffix",
         "w",
     }
+    assert not hasattr(parsed, "language_iso")

@@ -1,7 +1,7 @@
 from typing import Protocol
 
-from intertext_ingest.normalized import AcquiredSource, NormalizedVersion
+from intertext_ingest.normalized import AcquiredSource, ParsedSource
 
 
 class SourceParser(Protocol):
-    def parse(self, source: AcquiredSource) -> NormalizedVersion: ...
+    def parse(self, source: AcquiredSource) -> ParsedSource: ...

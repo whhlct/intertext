@@ -10,6 +10,7 @@ from conftest import FIXTURES
 from intertext_ingest.datasets import detect_sblgnt_version
 from intertext_ingest.sources.git import GitRepositorySource
 from intertext_ingest.sources.http import HttpZipSource
+from intertext_ingest.sources.local import LocalSource
 
 
 def test_http_zip_source_downloads_extracts_and_reuses_checksum_cache(
@@ -99,3 +100,22 @@ def test_git_source_records_commit_and_archive_checksum(tmp_path: Path) -> None:
     assert acquired.metadata.textual_version == "1.2"
     assert acquired.content_path.joinpath("Mark.xml").is_file()
     assert cached.metadata == acquired.metadata
+
+
+def test_local_source_copies_artifact_and_records_provenance(tmp_path: Path) -> None:
+    local_path = FIXTURES / "kjv"
+    source = LocalSource(
+        identifier="local-usfm",
+        provider="local-fixture",
+        path=local_path,
+        license="fixture license",
+        source_revision="fixture-revision",
+    )
+
+    acquired = source.acquire(tmp_path / "raw")
+
+    assert acquired.content_path != local_path
+    assert acquired.content_path.joinpath("71-MRKeng-kjv2006.usfm").is_file()
+    assert acquired.metadata.source_locator == local_path.resolve().as_uri()
+    assert acquired.metadata.source_revision == "fixture-revision"
+    assert len(acquired.metadata.sha256) == 64

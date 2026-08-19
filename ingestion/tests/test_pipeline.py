@@ -5,16 +5,16 @@ from pathlib import Path
 from app import models  # noqa: F401
 from app.db.base import Base
 from app.models import (
+    CanonicalUnit,
     PreferredVersion,
     SegmentUnitMapping,
+    StructureNode,
     TextVersion,
     VersionRelease,
     VersionSegment,
 )
-from intertext_ingest.datasets import MARK_ONE_REQUIRED, DatasetDefinition
+from intertext_ingest.datasets import get_dataset
 from intertext_ingest.normalized import AcquiredSource
-from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
-from intertext_ingest.parsers.usfm import UsfmParser
 from intertext_ingest.pipeline import IngestionPipeline
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
@@ -42,26 +42,8 @@ def test_pipeline_maps_persists_and_is_idempotent(
     Base.metadata.create_all(engine)
     sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     pipeline = IngestionPipeline(sessions)
-    kjv = DatasetDefinition(
-        name="kjv",
-        source=FixtureSource(kjv_source),
-        parser=UsfmParser(
-            slug="kjv",
-            title="King James Version",
-            abbreviation="KJV",
-            language_iso="en",
-            language_name="English",
-            version_type="translation",
-        ),
-        required_reference_keys=MARK_ONE_REQUIRED,
-    )
-    sblgnt = DatasetDefinition(
-        name="sblgnt",
-        source=FixtureSource(sblgnt_source),
-        parser=SblgntXmlParser(),
-        required_reference_keys=MARK_ONE_REQUIRED,
-        preferred_role="default_source",
-    )
+    kjv = replace(get_dataset("kjv"), source=FixtureSource(kjv_source))
+    sblgnt = replace(get_dataset("sblgnt"), source=FixtureSource(sblgnt_source))
 
     first_kjv = pipeline.run(kjv, raw_root=tmp_path)
     first_sblgnt = pipeline.run(sblgnt, raw_root=tmp_path)
@@ -88,6 +70,24 @@ def test_pipeline_maps_persists_and_is_idempotent(
         assert session.scalar(select(func.count(VersionRelease.id))) == 3
         assert session.scalar(select(func.count(VersionSegment.id))) == 9
         assert session.scalar(select(func.count(SegmentUnitMapping.id))) == 9
+        canonical_keys = set(session.scalars(select(CanonicalUnit.internal_key)))
+        assert canonical_keys == {
+            "bible.mark.1.1",
+            "bible.mark.1.2",
+            "bible.mark.1.3",
+        }
+        assert set(session.scalars(select(StructureNode.path))) == {
+            "bible.mark",
+            "bible.mark.1",
+        }
+        source_identifiers = set(
+            session.scalars(select(VersionSegment.source_identifier))
+        )
+        assert source_identifiers == {"Mark 1:1", "Mark 1:2", "Mark 1:3"}
+        assert all(
+            "book_code" not in unit.metadata_
+            for unit in session.scalars(select(CanonicalUnit))
+        )
         kjv_version_id = session.scalar(
             select(TextVersion.id).where(TextVersion.slug == "kjv")
         )

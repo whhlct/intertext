@@ -51,7 +51,18 @@ class AcquiredSource:
 
 
 @dataclass(frozen=True)
-class NormalizedReference:
+class SourceReference:
+    """A reference exactly as expressed by a source format."""
+
+    scheme: str
+    label: str
+    components: dict[str, str | int] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class CanonicalReference:
+    """An application-level reference resolved by a corpus interpreter."""
+
     scheme: str
     key: str
     label: str
@@ -66,19 +77,24 @@ class NormalizedToken:
 
 
 @dataclass(frozen=True)
-class NormalizedSegment:
+class ParsedSegment:
     sequence: int
-    language_iso: str
     text: str
-    source_reference: str
-    reference: NormalizedReference
+    source_reference: SourceReference
     content_markup: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     tokens: tuple[NormalizedToken, ...] = ()
 
 
 @dataclass(frozen=True)
-class NormalizedVersion:
+class ParsedSource:
+    source: SourceMetadata
+    parser_version: str
+    segments: tuple[ParsedSegment, ...]
+
+
+@dataclass(frozen=True)
+class VersionDefinition:
     slug: str
     title: str
     abbreviation: str
@@ -88,11 +104,45 @@ class NormalizedVersion:
     script: str | None
     direction: str
     version_type: str
-    source: SourceMetadata
-    segments: tuple[NormalizedSegment, ...]
     description: str | None = None
     publisher: str | None = None
     rights_statement: str | None = None
+
+
+@dataclass(frozen=True)
+class NormalizedSegment:
+    sequence: int
+    language_iso: str
+    text: str
+    source_reference: SourceReference
+    content_markup: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    tokens: tuple[NormalizedToken, ...] = ()
+
+
+@dataclass(frozen=True)
+class NormalizedVersion:
+    definition: VersionDefinition
+    source: SourceMetadata
+    parser_version: str
+    segments: tuple[NormalizedSegment, ...]
+
+    @property
+    def slug(self) -> str:
+        return self.definition.slug
+
+
+@dataclass(frozen=True)
+class ResolvedSegment:
+    segment: NormalizedSegment
+    canonical_targets: tuple[CanonicalReference, ...]
+    identifier: str
+
+
+@dataclass(frozen=True)
+class ResolvedVersion:
+    version: NormalizedVersion
+    segments: tuple[ResolvedSegment, ...]
 
 
 @dataclass(frozen=True)

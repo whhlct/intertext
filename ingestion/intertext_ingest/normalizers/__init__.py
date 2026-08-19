@@ -1,4 +1,4 @@
-from intertext_ingest.normalizers.references import bible_reference
 from intertext_ingest.normalizers.text import normalize_plain_text
+from intertext_ingest.normalizers.unicode import normalize_unicode
 
-__all__ = ["bible_reference", "normalize_plain_text"]
+__all__ = ["normalize_plain_text", "normalize_unicode"]
