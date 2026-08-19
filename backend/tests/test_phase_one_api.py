@@ -2,6 +2,7 @@ import asyncio
 
 from app.main import app
 from app.models import (
+    CanonicalUnit,
     SegmentUnitMapping,
     TextVersion,
     VersionRelease,
@@ -19,6 +20,33 @@ def request(path: str) -> Response:
             return await client.get(path)
 
     return asyncio.run(send_request())
+
+
+def delete_version_mappings(
+    session: Session,
+    version_slug: str,
+    canonical_key: str | None = None,
+) -> None:
+    mapping_ids = (
+        select(SegmentUnitMapping.id)
+        .join(VersionSegment, VersionSegment.id == SegmentUnitMapping.segment_id)
+        .join(
+            VersionRelease,
+            VersionRelease.id == VersionSegment.version_release_id,
+        )
+        .join(TextVersion, TextVersion.id == VersionRelease.version_id)
+        .join(
+            CanonicalUnit,
+            CanonicalUnit.id == SegmentUnitMapping.canonical_unit_id,
+        )
+        .where(TextVersion.slug == version_slug)
+    )
+    if canonical_key is not None:
+        mapping_ids = mapping_ids.where(CanonicalUnit.internal_key == canonical_key)
+    session.execute(
+        delete(SegmentUnitMapping).where(SegmentUnitMapping.id.in_(mapping_ids))
+    )
+    session.commit()
 
 
 def test_lists_texts_and_current_versions(
@@ -40,21 +68,7 @@ def test_lists_versions_with_content_in_a_reference_range(
     canonical_fixture: None,
     database_session: Session,
 ) -> None:
-    greek_segment_ids = (
-        select(VersionSegment.id)
-        .join(
-            VersionRelease,
-            VersionRelease.id == VersionSegment.version_release_id,
-        )
-        .join(TextVersion, TextVersion.id == VersionRelease.version_id)
-        .where(TextVersion.slug == "greek")
-    )
-    database_session.execute(
-        delete(SegmentUnitMapping).where(
-            SegmentUnitMapping.segment_id.in_(greek_segment_ids)
-        )
-    )
-    database_session.commit()
+    delete_version_mappings(database_session, "greek")
 
     response = request(
         "/api/v1/texts/bible/versions/available?reference=Mark%201"
@@ -97,6 +111,42 @@ def test_reader_resolves_and_aligns_selected_versions(
         "The beginning of the gospel"
     )
     assert body["units"][1]["segments"]["greek"][0]["mapping_type"] == ("spans")
+
+
+def test_reader_omits_versions_without_content(
+    canonical_fixture: None,
+    database_session: Session,
+) -> None:
+    delete_version_mappings(database_session, "greek")
+
+    response = request(
+        "/api/v1/reader/bible/Mark%201?versions=greek,english"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [version["slug"] for version in body["versions"]] == ["english"]
+    assert all("greek" not in unit["segments"] for unit in body["units"])
+
+
+def test_reader_omits_empty_segment_keys_for_individual_units(
+    canonical_fixture: None,
+    database_session: Session,
+) -> None:
+    delete_version_mappings(database_session, "greek", "bible.mark.1.2")
+
+    response = request(
+        "/api/v1/reader/bible/Mark%201?versions=greek,english"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [version["slug"] for version in body["versions"]] == [
+        "greek",
+        "english",
+    ]
+    assert set(body["units"][0]["segments"]) == {"greek", "english"}
+    assert set(body["units"][1]["segments"]) == {"english"}
 
 
 def test_reader_rejects_unknown_reference(canonical_fixture: None) -> None:

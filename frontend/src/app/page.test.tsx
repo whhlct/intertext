@@ -162,7 +162,15 @@ describe("Home", () => {
               label: "1",
               ordinal: 1,
               segments: {
-                sblgnt: [],
+                sblgnt: [
+                  {
+                    id: "greek-segment",
+                    sequence: 1,
+                    text: "Ἀρχὴ τοῦ εὐαγγελίου",
+                    content_markup: {},
+                    mapping_type: "direct",
+                  },
+                ],
                 kjv: [
                   {
                     id: "segment",

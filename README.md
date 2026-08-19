@@ -254,7 +254,7 @@ Select reader versions with the comma-separated `versions` query parameter:
 GET /api/v1/reader/bible/Mark%201?versions=sblgnt,kjv
 ```
 
-If no versions are requested, the reader returns all versions that have a current release. Reader output is organized by canonical unit; each version key contains a list of mapped segments so split and merged source boundaries do not require 1:1 alignment.
+If no versions are requested, the reader considers all versions that have a current release and returns only those with mapped content in the resolved range. Per-unit `segments` objects omit version keys without content rather than returning empty lists. Reader output is organized by canonical unit; each included version key contains a list of mapped segments so split and merged source boundaries do not require 1:1 alignment.
 
 The API returns an empty library until the separate ingestion package populates corpus data.
 

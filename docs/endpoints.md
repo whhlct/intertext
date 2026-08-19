@@ -83,12 +83,17 @@ Returns canonical units and already-aligned version segments for a resolved refe
 
 Query parameters:
 
-- `versions` — optional comma-separated version slugs. The response preserves the requested order and removes duplicates. When omitted, all versions with current releases are returned.
+- `versions` — optional comma-separated version slugs. The response preserves the requested order and removes duplicates. When omitted, all versions with current releases are considered.
 
 Example:
 
 ```http
 GET /api/v1/reader/bible/Mark%201?versions=sblgnt,kjv
 ```
+
+The response includes only versions that have mapped content somewhere in the
+resolved range. Within each canonical unit, `segments` includes only version
+keys that have content for that unit; unavailable versions are omitted instead
+of being represented by empty lists.
 
 Returns `404` when the text, reference, or requested current version is unavailable. Returns `422` for an invalid canonical range or malformed `versions` value such as `kjv,,sblgnt`.
