@@ -209,6 +209,14 @@ npm --prefix frontend run dev
 
 The API health check is available at `http://localhost:8000/health`, and the frontend is available at `http://localhost:3000`.
 
+The frontend proxies `/api/*` and `/health` to the backend so browser requests
+remain same-origin during local development. It targets `http://127.0.0.1:8000`
+by default; set `INTERTEXT_BACKEND_URL` when starting or building the frontend
+to use another backend origin.
+
+Reader selections are reflected in the URL (`text`, `reference`, and
+`versions`), so a comparison can be bookmarked or shared.
+
 Run the Phase 0 checks:
 
 ```bash
@@ -233,13 +241,16 @@ The backend exposes the corpus-neutral reader foundation at:
 ```http
 GET /api/v1/texts
 GET /api/v1/texts/{text_slug}/versions
+GET /api/v1/texts/{text_slug}/structure
+GET /api/v1/texts/{text_slug}/structure/{node_id}/children
+GET /api/v1/texts/{text_slug}/references/resolve?reference=Mark%201
 GET /api/v1/reader/{text_slug}/{reference}
 ```
 
-Select reader versions with repeated `version` query parameters:
+Select reader versions with the comma-separated `versions` query parameter:
 
 ```http
-GET /api/v1/reader/bible/Mark%201?version=greek&version=english
+GET /api/v1/reader/bible/Mark%201?versions=sblgnt,kjv
 ```
 
 If no versions are requested, the reader returns all versions that have a current release. Reader output is organized by canonical unit; each version key contains a list of mapped segments so split and merged source boundaries do not require 1:1 alignment.
