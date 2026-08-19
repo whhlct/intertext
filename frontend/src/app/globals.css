@@ -199,12 +199,8 @@ select {
 }
 
 .reader-column-head {
-  position: sticky;
-  top: 5rem;
-  z-index: 20;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--card) 94%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--card);
 }
 
 .reader-column-head > * + * {
