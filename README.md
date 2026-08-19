@@ -159,7 +159,8 @@ uv run --package intertext-backend pytest backend/tests
 Run ingestion commands:
 
 ```bash
-uv run --package intertext-ingest python -m intertext_ingest.cli
+uv run --package intertext-ingest intertext-ingest import kjv
+uv run --package intertext-ingest intertext-ingest import sblgnt
 ```
 
 Add a backend dependency:
@@ -197,7 +198,7 @@ docker compose up -d postgres
 uv run --package intertext-backend alembic --config backend/alembic.ini upgrade head
 ```
 
-Phase 0 intentionally contains no schema revision; the Alembic command establishes the migration workflow for Phase 1.
+The initial migration creates the canonical Phase 1 backend schema. It does not insert corpus data.
 
 Run the backend and frontend in separate terminals:
 
@@ -225,6 +226,26 @@ Stop PostgreSQL without deleting its named data volume:
 docker compose down
 ```
 
+## Phase 1 backend API
+
+The backend exposes the corpus-neutral reader foundation at:
+
+```http
+GET /api/v1/texts
+GET /api/v1/texts/{text_slug}/versions
+GET /api/v1/reader/{text_slug}/{reference}
+```
+
+Select reader versions with repeated `version` query parameters:
+
+```http
+GET /api/v1/reader/bible/Mark%201?version=greek&version=english
+```
+
+If no versions are requested, the reader returns all versions that have a current release. Reader output is organized by canonical unit; each version key contains a list of mapped segments so split and merged source boundaries do not require 1:1 alignment.
+
+The API returns an empty library until the separate ingestion package populates corpus data.
+
 ## Architectural invariants
 
 Treat these as high-priority constraints.
@@ -251,6 +272,8 @@ Treat these as high-priority constraints.
 * [`docs/project-structure.md`](docs/project-structure.md) — repository/folder organization and uv workspace layout.
 * [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md) — recommended build order and milestones.
 * [`docs/engineering-guidelines.md`](docs/engineering-guidelines.md) — conventions for agents and contributors.
+* [`docs/ingestion.md`](docs/ingestion.md) — source acquisition, parsing, provenance, and import commands.
+* [`docs/endpoints.md`](docs/endpoints.md) — backend HTTP endpoints and request parameters.
 * [`docs/decisions/0001-postgresql.md`](docs/decisions/0001-postgresql.md) — PostgreSQL decision.
 * [`docs/decisions/0002-sqlalchemy.md`](docs/decisions/0002-sqlalchemy.md) — SQLAlchemy over SQLModel.
 * [`docs/decisions/0003-canonical-text-model.md`](docs/decisions/0003-canonical-text-model.md) — canonical-unit architecture.

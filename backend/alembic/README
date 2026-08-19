@@ -1,2 +1,1 @@
-This directory contains Intertext database migrations. Phase 0 intentionally has no schema revisions.
-
+This directory contains Intertext database migrations. The initial revision creates the Phase 1 canonical text foundation.

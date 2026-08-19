@@ -1,0 +1,81 @@
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class BibleBook:
+    slug: str
+    name: str
+    testament: str
+    aliases: tuple[str, ...] = ()
+
+
+_BOOK_DATA = (
+    ("genesis", "Genesis", "old", ()),
+    ("exodus", "Exodus", "old", ()),
+    ("leviticus", "Leviticus", "old", ()),
+    ("numbers", "Numbers", "old", ()),
+    ("deuteronomy", "Deuteronomy", "old", ()),
+    ("joshua", "Joshua", "old", ()),
+    ("judges", "Judges", "old", ()),
+    ("ruth", "Ruth", "old", ()),
+    ("1-samuel", "1 Samuel", "old", ()),
+    ("2-samuel", "2 Samuel", "old", ()),
+    ("1-kings", "1 Kings", "old", ()),
+    ("2-kings", "2 Kings", "old", ()),
+    ("1-chronicles", "1 Chronicles", "old", ()),
+    ("2-chronicles", "2 Chronicles", "old", ()),
+    ("ezra", "Ezra", "old", ()),
+    ("nehemiah", "Nehemiah", "old", ()),
+    ("esther", "Esther", "old", ()),
+    ("job", "Job", "old", ()),
+    ("psalms", "Psalms", "old", ("Psalm",)),
+    ("proverbs", "Proverbs", "old", ()),
+    ("ecclesiastes", "Ecclesiastes", "old", ()),
+    ("song-of-solomon", "Song of Solomon", "old", ("Song of Songs",)),
+    ("isaiah", "Isaiah", "old", ()),
+    ("jeremiah", "Jeremiah", "old", ()),
+    ("lamentations", "Lamentations", "old", ()),
+    ("ezekiel", "Ezekiel", "old", ()),
+    ("daniel", "Daniel", "old", ()),
+    ("hosea", "Hosea", "old", ()),
+    ("joel", "Joel", "old", ()),
+    ("amos", "Amos", "old", ()),
+    ("obadiah", "Obadiah", "old", ()),
+    ("jonah", "Jonah", "old", ()),
+    ("micah", "Micah", "old", ()),
+    ("nahum", "Nahum", "old", ()),
+    ("habakkuk", "Habakkuk", "old", ()),
+    ("zephaniah", "Zephaniah", "old", ()),
+    ("haggai", "Haggai", "old", ()),
+    ("zechariah", "Zechariah", "old", ()),
+    ("malachi", "Malachi", "old", ()),
+    ("matthew", "Matthew", "new", ()),
+    ("mark", "Mark", "new", ()),
+    ("luke", "Luke", "new", ()),
+    ("john", "John", "new", ()),
+    ("acts", "Acts", "new", ()),
+    ("romans", "Romans", "new", ()),
+    ("1-corinthians", "1 Corinthians", "new", ()),
+    ("2-corinthians", "2 Corinthians", "new", ()),
+    ("galatians", "Galatians", "new", ()),
+    ("ephesians", "Ephesians", "new", ()),
+    ("philippians", "Philippians", "new", ()),
+    ("colossians", "Colossians", "new", ()),
+    ("1-thessalonians", "1 Thessalonians", "new", ()),
+    ("2-thessalonians", "2 Thessalonians", "new", ()),
+    ("1-timothy", "1 Timothy", "new", ()),
+    ("2-timothy", "2 Timothy", "new", ()),
+    ("titus", "Titus", "new", ()),
+    ("philemon", "Philemon", "new", ()),
+    ("hebrews", "Hebrews", "new", ()),
+    ("james", "James", "new", ()),
+    ("1-peter", "1 Peter", "new", ()),
+    ("2-peter", "2 Peter", "new", ()),
+    ("1-john", "1 John", "new", ()),
+    ("2-john", "2 John", "new", ()),
+    ("3-john", "3 John", "new", ()),
+    ("jude", "Jude", "new", ()),
+    ("revelation", "Revelation", "new", ("Revelation of John",)),
+)
+
+PROTESTANT_66_BOOKS = tuple(BibleBook(*values) for values in _BOOK_DATA)
