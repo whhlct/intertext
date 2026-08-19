@@ -272,6 +272,35 @@ select {
   line-height: 1.78;
 }
 
+.reader-interlinear {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.8rem 1rem;
+  line-height: 1.2;
+}
+
+.reader-interlinear-token {
+  display: inline-flex;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.reader-token-surface {
+  white-space: nowrap;
+}
+
+.reader-token-gloss {
+  max-width: 11rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
 .paragraph-start {
   text-indent: 1.25em;
 }

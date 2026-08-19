@@ -5,9 +5,13 @@ from sqlalchemy.orm import aliased
 
 from app.models import (
     CanonicalUnit,
+    EnrichmentImport,
+    Language,
     PreferredVersion,
     SegmentUnitMapping,
     TextVersion,
+    Token,
+    TokenGloss,
     VersionRelease,
     VersionSegment,
 )
@@ -76,5 +80,23 @@ def select_aligned_segments(
             TextVersion.id,
             VersionSegment.sequence,
             SegmentUnitMapping.sequence,
+        )
+    )
+
+
+def select_segment_tokens(segment_ids: list[uuid.UUID]) -> Select:
+    return (
+        select(Token, TokenGloss, Language, EnrichmentImport)
+        .outerjoin(TokenGloss, TokenGloss.token_id == Token.id)
+        .outerjoin(Language, Language.id == TokenGloss.target_language_id)
+        .outerjoin(
+            EnrichmentImport,
+            EnrichmentImport.id == TokenGloss.enrichment_import_id,
+        )
+        .where(Token.segment_id.in_(segment_ids), Token.is_word.is_(True))
+        .order_by(
+            Token.segment_id,
+            Token.token_index,
+            EnrichmentImport.imported_at.desc(),
         )
     )

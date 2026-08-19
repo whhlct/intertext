@@ -67,6 +67,24 @@ export interface ReaderSegment {
   text: string;
   content_markup: Record<string, unknown>;
   mapping_type: string;
+  tokens?: ReaderToken[];
+}
+
+export interface ReaderTokenGloss {
+  gloss: string;
+  gloss_type: string;
+  source: string;
+  language: LanguageSummary;
+}
+
+export interface ReaderToken {
+  id: string;
+  index: number;
+  surface: string;
+  normalized: string | null;
+  char_start: number | null;
+  char_end: number | null;
+  glosses: ReaderTokenGloss[];
 }
 
 export interface ReaderUnit {
