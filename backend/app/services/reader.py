@@ -98,6 +98,16 @@ def get_reader(
                 )
             )
 
+    present_version_slugs = {
+        version_slug
+        for segments_by_version in segment_map.values()
+        for version_slug, segments in segments_by_version.items()
+        if segments
+    }
+    version_rows = [
+        row for row in version_rows if row[0].slug in present_version_slugs
+    ]
+
     versions = [
         ReaderVersion(
             id=version.id,
@@ -115,7 +125,6 @@ def get_reader(
         )
         for version, language, _release in version_rows
     ]
-    empty_segments = {version.slug: [] for version, _, _ in version_rows}
 
     return ReaderResponse(
         text=ReaderText(id=text.id, slug=text.slug, title=text.title),
@@ -131,10 +140,7 @@ def get_reader(
                 key=unit.internal_key,
                 label=str(unit.metadata_.get("label", unit.ordinal)),
                 ordinal=unit.ordinal,
-                segments={
-                    **empty_segments,
-                    **segment_map.get(unit.id, {}),
-                },
+                segments=dict(segment_map.get(unit.id, {})),
             )
             for unit in units
         ],

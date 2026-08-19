@@ -3,7 +3,15 @@ import uuid
 from sqlalchemy import Select, and_, select
 from sqlalchemy.orm import Session
 
-from app.models import Language, Text, TextVersion, VersionRelease
+from app.models import (
+    CanonicalUnit,
+    Language,
+    SegmentUnitMapping,
+    Text,
+    TextVersion,
+    VersionRelease,
+    VersionSegment,
+)
 
 
 def select_texts() -> Select[tuple[Text]]:
@@ -48,5 +56,44 @@ def select_versions(
             ),
         )
         .where(TextVersion.text_id == text_id)
+        .order_by(TextVersion.title, TextVersion.slug)
+    )
+
+
+def select_versions_available_in_range(
+    text_id: uuid.UUID, start_ordinal: int, end_ordinal: int
+) -> Select[tuple[TextVersion, Language, VersionRelease]]:
+    has_mapped_content = (
+        select(1)
+        .select_from(VersionSegment)
+        .join(
+            SegmentUnitMapping,
+            SegmentUnitMapping.segment_id == VersionSegment.id,
+        )
+        .join(
+            CanonicalUnit,
+            CanonicalUnit.id == SegmentUnitMapping.canonical_unit_id,
+        )
+        .where(
+            VersionSegment.version_release_id == VersionRelease.id,
+            CanonicalUnit.text_id == text_id,
+            CanonicalUnit.ordinal.between(start_ordinal, end_ordinal),
+        )
+        .exists()
+    )
+    return (
+        select(TextVersion, Language, VersionRelease)
+        .join(Language, Language.id == TextVersion.default_language_id)
+        .join(
+            VersionRelease,
+            and_(
+                VersionRelease.version_id == TextVersion.id,
+                VersionRelease.is_current.is_(True),
+            ),
+        )
+        .where(
+            TextVersion.text_id == text_id,
+            has_mapped_content,
+        )
         .order_by(TextVersion.title, TextVersion.slug)
     )
