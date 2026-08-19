@@ -7,12 +7,15 @@ from app.db.base import Base
 from app.models import (
     CanonicalUnit,
     PreferredVersion,
+    ReferenceLabel,
     SegmentUnitMapping,
     StructureNode,
+    Text,
     TextVersion,
     VersionRelease,
     VersionSegment,
 )
+from intertext_ingest.corpora.quran.validation import QuranVersionValidator
 from intertext_ingest.datasets import get_dataset
 from intertext_ingest.normalized import AcquiredSource
 from intertext_ingest.pipeline import IngestionPipeline
@@ -105,6 +108,75 @@ def test_pipeline_maps_persists_and_is_idempotent(
         version = session.get(TextVersion, preferred.version_id)
         assert version is not None
         assert version.slug == "sblgnt"
+        assert preferred.role == "default_source"
+
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
+def test_quran_pipeline_maps_persists_and_is_idempotent(
+    tmp_path: Path,
+    quran_source: AcquiredSource,
+) -> None:
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    pipeline = IngestionPipeline(sessions)
+    quran = replace(
+        get_dataset("quran"),
+        source=FixtureSource(quran_source),
+        corpus_validator=QuranVersionValidator(
+            expected_surah_count=2,
+            expected_ayah_count=4,
+            required_canonical_keys=("quran.1.1", "quran.2.2"),
+        ),
+    )
+
+    first = pipeline.run(quran, raw_root=tmp_path)
+    second = pipeline.run(quran, raw_root=tmp_path)
+
+    assert first.created is True
+    assert second.created is False
+    assert first.segment_count == 4
+    assert first.mapping_count == 4
+    with sessions() as session:
+        text = session.scalar(select(Text).where(Text.slug == "quran"))
+        assert text is not None
+        assert text.title == "Quran"
+        assert set(session.scalars(select(CanonicalUnit.internal_key))) == {
+            "quran.1.1",
+            "quran.1.2",
+            "quran.2.1",
+            "quran.2.2",
+        }
+        assert set(session.scalars(select(StructureNode.path))) == {
+            "quran.1",
+            "quran.2",
+        }
+        assert set(session.scalars(select(VersionSegment.source_identifier))) == {
+            "1:1",
+            "1:2",
+            "2:1",
+            "2:2",
+        }
+        labels = set(session.scalars(select(ReferenceLabel.normalized_label)))
+        assert {"1:1", "surah 1", "الفاتحة"}.issubset(labels)
+        first_segment = session.scalar(
+            select(VersionSegment).order_by(VersionSegment.sequence)
+        )
+        assert first_segment is not None
+        assert first_segment.text_plain == (
+            "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+        )
+        preferred = session.scalar(select(PreferredVersion))
+        assert preferred is not None
+        version = session.get(TextVersion, preferred.version_id)
+        assert version is not None
+        assert version.slug == "tanzil-simple"
         assert preferred.role == "default_source"
 
     Base.metadata.drop_all(engine)

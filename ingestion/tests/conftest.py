@@ -35,3 +35,13 @@ def sblgnt_source(source_metadata: SourceMetadata) -> AcquiredSource:
         sha256=hashlib.sha256(b"fixture-sblgnt").hexdigest(),
     )
     return AcquiredSource(FIXTURES / "sblgnt" / "xml", metadata)
+
+
+@pytest.fixture
+def quran_source(source_metadata: SourceMetadata) -> AcquiredSource:
+    metadata = replace(
+        source_metadata,
+        sha256=hashlib.sha256(b"fixture-quran").hexdigest(),
+        textual_version="1.1",
+    )
+    return AcquiredSource(FIXTURES / "quran" / "quran-simple.xml", metadata)

@@ -187,11 +187,20 @@ export function ReaderApp() {
   }, [books, resolvedLabel, selectedBookId, textSlug]);
 
   useEffect(() => {
-    if (!reference && chapters.length) {
-      setReference(chapters[0].title);
-      setReferenceDraft(chapters[0].title);
-    }
-  }, [chapters, reference]);
+    if (reference || !selectedBookId || !chaptersQuery.isSuccess) return;
+    const selectedNode = books.find((book) => book.id === selectedBookId);
+    const target = chapters[0] ?? selectedNode;
+    if (!target) return;
+    setReference(target.title);
+    setReferenceDraft(target.title);
+    if (!chapters.length) setNavigationOpen(false);
+  }, [
+    books,
+    chapters,
+    chaptersQuery.isSuccess,
+    reference,
+    selectedBookId,
+  ]);
 
   useEffect(() => {
     if (!textSlug || typeof window === "undefined") return;

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Minimal Tanzil-shaped test fixture; not a distributable Quran text. -->
+<quran>
+  <sura index="1" name="الفاتحة">
+    <aya index="1" text="بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ" />
+    <aya index="2" text="الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ" />
+  </sura>
+  <sura index="2" name="البقرة">
+    <aya index="1" text="الم" bismillah="بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ" />
+    <aya index="2" text="ذَٰلِكَ الْكِتَابُ لَا رَيْبَ فِيهِ" />
+  </sura>
+</quran>

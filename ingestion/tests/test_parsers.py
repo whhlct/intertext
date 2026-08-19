@@ -1,4 +1,5 @@
 from intertext_ingest.normalized import AcquiredSource
+from intertext_ingest.parsers.quran_xml import QuranXmlParser
 from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
 from intertext_ingest.parsers.usfm import UsfmParser
 
@@ -51,3 +52,25 @@ def test_sblgnt_xml_parser_emits_source_references(
         "w",
     }
     assert not hasattr(parsed, "language_iso")
+
+
+def test_quran_xml_parser_preserves_ayah_text_and_structured_attributes(
+    quran_source: AcquiredSource,
+) -> None:
+    parsed = QuranXmlParser().parse(quran_source)
+
+    assert len(parsed.segments) == 4
+    first = parsed.segments[0]
+    assert first.source_reference.scheme == "quran_xml"
+    assert first.source_reference.components == {
+        "surah": 1,
+        "ayah": 1,
+        "surah_name": "الفاتحة",
+    }
+    assert first.text == "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+    third = parsed.segments[2]
+    assert third.source_reference.label == "2:1"
+    assert third.content_markup["attributes"]["bismillah"] == (
+        "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+    )
+    assert third.text == "الم"

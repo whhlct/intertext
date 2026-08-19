@@ -5,13 +5,15 @@ from pathlib import Path
 from intertext_ingest.corpora.base import CorpusMapper, CorpusValidator
 from intertext_ingest.corpora.bible import PROTESTANT_66_CANON, BibleMapper
 from intertext_ingest.corpora.bible.validation import BibleVersionValidator
+from intertext_ingest.corpora.quran import QuranMapper, QuranVersionValidator
 from intertext_ingest.normalized import VersionDefinition
 from intertext_ingest.parsers.base import SourceParser
+from intertext_ingest.parsers.quran_xml import QuranXmlParser
 from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
 from intertext_ingest.parsers.usfm import UsfmParser
 from intertext_ingest.sources.base import SourceAdapter
 from intertext_ingest.sources.git import GitRepositorySource
-from intertext_ingest.sources.http import HttpZipSource
+from intertext_ingest.sources.http import HttpFileSource, HttpZipSource
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,11 @@ MARK_ONE_REQUIRED = (
 )
 
 _SBLGNT_VERSION = re.compile(r"<tr><td>v(\d+(?:\.\d+)+)</td>", re.IGNORECASE)
+
+TANZIL_QURAN_SIMPLE_URL = (
+    "https://tanzil.net/pub/download/index.php?marks=true&sajdah=true&"
+    "tatweel=true&quranType=simple&outType=xml&agree=true"
+)
 
 
 def detect_sblgnt_version(repository_path: Path) -> str | None:
@@ -117,4 +124,45 @@ def get_dataset(name: str) -> DatasetDefinition:
             ),
             preferred_role="default_source",
         )
-    raise ValueError(f"Unsupported dataset '{name}'. Expected one of: kjv, sblgnt")
+    if name == "quran":
+        return DatasetDefinition(
+            name="quran",
+            source=HttpFileSource(
+                identifier="quran-simple",
+                provider="tanzil",
+                url=TANZIL_QURAN_SIMPLE_URL,
+                file_suffix=".xml",
+                textual_version="1.1",
+                license=(
+                    "Creative Commons Attribution 3.0; Tanzil terms require "
+                    "verbatim text, attribution, and a link to tanzil.net"
+                ),
+            ),
+            parser=QuranXmlParser(),
+            version=VersionDefinition(
+                slug="tanzil-simple",
+                title="Tanzil Quran Text (Simple)",
+                abbreviation="Tanzil Simple",
+                language_iso="ar",
+                language_name="Arabic",
+                language_native_name="العربية",
+                script="Arab",
+                direction="rtl",
+                version_type="digital_edition",
+                publisher="Tanzil Project",
+                rights_statement=(
+                    "Tanzil Quran Text (Simple), Version 1.1. Copyright "
+                    "2007-2026 Tanzil Project; Creative Commons Attribution "
+                    "3.0. Tanzil requires the Quran text to remain verbatim, "
+                    "clear attribution to Tanzil Project, a link to tanzil.net, "
+                    "and reproduction of its copyright notice in derived files "
+                    "containing a substantial portion of the text."
+                ),
+            ),
+            corpus_mapper=QuranMapper(),
+            corpus_validator=QuranVersionValidator(),
+            preferred_role="default_source",
+        )
+    raise ValueError(
+        f"Unsupported dataset '{name}'. Expected one of: kjv, quran, sblgnt"
+    )

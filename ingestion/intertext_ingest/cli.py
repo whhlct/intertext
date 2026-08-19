@@ -18,7 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
     import_parser = subcommands.add_parser(
         "import", help="Acquire and import a dataset"
     )
-    import_parser.add_argument("dataset", choices=("kjv", "sblgnt"))
+    import_parser.add_argument("dataset", choices=("kjv", "quran", "sblgnt"))
     import_parser.add_argument(
         "--raw-dir",
         type=Path,

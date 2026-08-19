@@ -122,3 +122,94 @@ class HttpZipSource:
                 shutil.rmtree(extraction_path)
                 raise
         return extraction_path
+
+
+class HttpFileSource:
+    """Download and preserve one HTTP artifact without interpreting its format."""
+
+    def __init__(
+        self,
+        *,
+        identifier: str,
+        provider: str,
+        url: str,
+        license: str,
+        file_suffix: str,
+        textual_version: str | None = None,
+        source_revision: str | None = None,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
+        if not file_suffix.startswith(".") or "/" in file_suffix:
+            raise ValueError(f"Invalid HTTP artifact suffix: {file_suffix}")
+        self.identifier = identifier
+        self.provider = provider
+        self.url = url
+        self.license = license
+        self.file_suffix = file_suffix
+        self.textual_version = textual_version
+        self.source_revision = source_revision
+        self.transport = transport
+
+    def acquire(self, raw_root: Path, *, refresh: bool = False) -> AcquiredSource:
+        source_root = (raw_root / self.provider / self.identifier).resolve()
+        source_root.mkdir(parents=True, exist_ok=True)
+        metadata_path = source_root / "source.json"
+
+        if metadata_path.exists() and not refresh:
+            metadata = read_metadata(metadata_path)
+            artifact_path = Path(metadata.raw_artifact_path)
+            if not artifact_path.exists():
+                raise FileNotFoundError(f"Cached artifact is missing: {artifact_path}")
+            if sha256_file(artifact_path) != metadata.sha256:
+                raise ValueError(f"Cached artifact checksum mismatch: {artifact_path}")
+            return AcquiredSource(content_path=artifact_path, metadata=metadata)
+
+        temporary_path = source_root / f"{self.identifier}{self.file_suffix}.part"
+        headers: dict[str, str]
+        with (
+            httpx.Client(
+                follow_redirects=True,
+                timeout=httpx.Timeout(120.0),
+                transport=self.transport,
+            ) as client,
+            client.stream("GET", self.url) as response,
+        ):
+            response.raise_for_status()
+            headers = {
+                key.lower(): value
+                for key, value in response.headers.items()
+                if key.lower()
+                in {"etag", "last-modified", "content-type", "content-disposition"}
+            }
+            with temporary_path.open("wb") as artifact_file:
+                for chunk in response.iter_bytes():
+                    artifact_file.write(chunk)
+
+        checksum = sha256_file(temporary_path)
+        artifact_path = (
+            source_root / "artifacts" / f"{checksum}{self.file_suffix}"
+        )
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        if artifact_path.exists():
+            temporary_path.unlink()
+        else:
+            temporary_path.replace(artifact_path)
+        revision = (
+            self.source_revision
+            or headers.get("etag", "").strip('"')
+            or headers.get("last-modified")
+            or checksum
+        )
+        metadata = SourceMetadata(
+            provider=self.provider,
+            source_locator=self.url,
+            source_revision=revision,
+            retrieved_at=datetime.now(UTC),
+            sha256=checksum,
+            license=self.license,
+            raw_artifact_path=str(artifact_path),
+            textual_version=self.textual_version,
+            attributes={"http_headers": headers, "artifact_type": "file"},
+        )
+        write_metadata(metadata_path, metadata)
+        return AcquiredSource(content_path=artifact_path, metadata=metadata)

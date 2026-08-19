@@ -91,8 +91,18 @@ export function ReferenceSidebar({
           </select>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-[1fr_5.25rem]">
-          <div className="min-h-0 overflow-y-auto border-r border-sidebar-border px-2 py-3">
+        <div
+          className={cn(
+            "grid min-h-0 flex-1",
+            chapters.length ? "grid-cols-[1fr_5.25rem]" : "grid-cols-1",
+          )}
+        >
+          <div
+            className={cn(
+              "min-h-0 overflow-y-auto px-2 py-3",
+              chapters.length && "border-r border-sidebar-border",
+            )}
+          >
             <p className="px-3 pb-2 text-[0.67rem] font-semibold tracking-[0.14em] text-sidebar-foreground/50 uppercase">
               {books[0]?.node_type === "book" ? "Books" : "Sections"}
             </p>
@@ -112,46 +122,50 @@ export function ReferenceSidebar({
                     )}
                   >
                     <span className="truncate">{book.title}</span>
-                    <ChevronRight
-                      className={cn(
-                        "size-3.5 opacity-0 transition-opacity group-hover:opacity-60",
-                        selected && "opacity-70",
-                      )}
-                    />
+                    {chapters.length ? (
+                      <ChevronRight
+                        className={cn(
+                          "size-3.5 opacity-0 transition-opacity group-hover:opacity-60",
+                          selected && "opacity-70",
+                        )}
+                      />
+                    ) : null}
                   </button>
                 );
               })}
             </nav>
           </div>
 
-          <div className="min-h-0 overflow-y-auto py-3">
-            <p className="px-2 pb-2 text-center text-[0.62rem] font-semibold tracking-[0.12em] text-sidebar-foreground/50 uppercase">
-              Ch.
-            </p>
-            <nav aria-label="Subsections" className="grid grid-cols-2 gap-1 px-2">
-              {chapters.map((chapter) => {
-                const selected =
-                  currentReference === chapter.title ||
-                  currentReference.startsWith(`${chapter.title}:`);
-                return (
-                  <button
-                    type="button"
-                    key={chapter.id}
-                    title={chapter.title}
-                    onClick={() => onChapterChange(chapter)}
-                    className={cn(
-                      "flex aspect-square items-center justify-center rounded-md text-xs tabular-nums transition-colors",
-                      selected
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                    )}
-                  >
-                    {chapter.short_title ?? chapter.ordinal}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+          {chapters.length ? (
+            <div className="min-h-0 overflow-y-auto py-3">
+              <p className="px-2 pb-2 text-center text-[0.62rem] font-semibold tracking-[0.12em] text-sidebar-foreground/50 uppercase">
+                Ch.
+              </p>
+              <nav aria-label="Subsections" className="grid grid-cols-2 gap-1 px-2">
+                {chapters.map((chapter) => {
+                  const selected =
+                    currentReference === chapter.title ||
+                    currentReference.startsWith(`${chapter.title}:`);
+                  return (
+                    <button
+                      type="button"
+                      key={chapter.id}
+                      title={chapter.title}
+                      onClick={() => onChapterChange(chapter)}
+                      className={cn(
+                        "flex aspect-square items-center justify-center rounded-md text-xs tabular-nums transition-colors",
+                        selected
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                      )}
+                    >
+                      {chapter.short_title ?? chapter.ordinal}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          ) : null}
         </div>
 
         <div className="border-t border-sidebar-border px-5 py-4 text-xs leading-5 text-sidebar-foreground/55">

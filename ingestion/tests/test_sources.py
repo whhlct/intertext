@@ -9,7 +9,7 @@ import httpx
 from conftest import FIXTURES
 from intertext_ingest.datasets import detect_sblgnt_version
 from intertext_ingest.sources.git import GitRepositorySource
-from intertext_ingest.sources.http import HttpZipSource
+from intertext_ingest.sources.http import HttpFileSource, HttpZipSource
 from intertext_ingest.sources.local import LocalSource
 
 
@@ -50,6 +50,45 @@ def test_http_zip_source_downloads_extracts_and_reuses_checksum_cache(
     assert (
         first.metadata.sha256 == hashlib.sha256(archive_buffer.getvalue()).hexdigest()
     )
+    assert second.metadata == first.metadata
+
+
+def test_http_file_source_downloads_and_reuses_checksum_cache(
+    tmp_path: Path,
+) -> None:
+    content = (FIXTURES / "quran" / "quran-simple.xml").read_bytes()
+    request_count = 0
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(
+            200,
+            content=content,
+            headers={
+                "Content-Type": "application/octet-stream; charset=utf-8",
+                "Content-Disposition": "attachment; filename=quran-simple.xml",
+            },
+            request=request,
+        )
+
+    source = HttpFileSource(
+        identifier="quran-simple-fixture",
+        provider="tanzil",
+        url="https://example.test/quran.xml",
+        license="CC BY 3.0",
+        file_suffix=".xml",
+        textual_version="1.1",
+        transport=httpx.MockTransport(respond),
+    )
+    first = source.acquire(tmp_path)
+    second = source.acquire(tmp_path)
+
+    assert request_count == 1
+    assert first.content_path.read_bytes() == content
+    assert first.metadata.sha256 == hashlib.sha256(content).hexdigest()
+    assert first.metadata.source_revision == first.metadata.sha256
+    assert first.metadata.attributes["artifact_type"] == "file"
     assert second.metadata == first.metadata
 
 

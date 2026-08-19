@@ -13,7 +13,7 @@ source acquisition
     → validation
 ```
 
-Providers, formats, and corpora are independent. The eBible adapter happens to deliver USFM, while the Faithlife Git adapter happens to deliver SBLGNT XML. Format parsers emit `SourceReference` values (`usfm` or `sblgnt`) and do not construct Intertext Bible references. The configured Bible corpus mapper interprets those values, applies the explicit Protestant 66-book canon used by these datasets, and emits resolved canonical targets. Persistence receives only the resolved version and canonical unit IDs; it contains no provider-, format-, or corpus-specific behavior.
+Providers, formats, and corpora are independent. The eBible adapter happens to deliver USFM, the Faithlife Git adapter happens to deliver SBLGNT XML, and Tanzil happens to deliver Quran XML. Format parsers emit format-native `SourceReference` values and do not construct Intertext canonical references. The responsible corpus mapper interprets those values and emits resolved canonical targets. Persistence receives only the resolved version and canonical unit IDs; it contains no provider-, format-, or corpus-specific behavior.
 
 Corpus resolution happens before persistence. Consequently both `MRK 1:1` from USFM and `Mark 1:1` from SBLGNT persist as the canonical segment identifier `Mark 1:1`, target `bible.mark.1.1`, and structure path `bible.mark.1`. Parser-native identifiers remain confined to the in-memory parsed representation and the preserved raw artifact.
 
@@ -43,6 +43,24 @@ The importer removes USFM markers from displayed plain text. Strong's annotation
 
 The importer resolves and records the exact Git commit rather than assuming a version tag. XML word, prefix, and suffix elements are retained in semantic segment markup. SBLGNT is configured as `default_source` for its New Testament coverage. It is never represented as an "original edition." MorphGNT is not part of this import.
 
+### Tanzil Quran Text (Simple)
+
+- Artifact: `https://tanzil.net/pub/download/index.php?marks=true&sajdah=true&tatweel=true&quranType=simple&outType=xml&agree=true`
+- Provider: Tanzil Project
+- Format: Quran XML (`quran` / `sura` / `aya`)
+- Textual version: 1.1, as recorded in the downloaded copyright block
+- License: Creative Commons Attribution 3.0, together with the attribution, link, copyright-notice, and verbatim-text terms embedded in the artifact
+
+The XML is preserved unchanged, including its copyright block. Ayah text is
+stored exactly from each `text` attribute. The separate `bismillah` attribute
+and any future source attributes are retained under segment
+`content_markup.attributes`; they are not silently concatenated into the
+numbered ayah text. Quran mapping creates the separate conceptual `Quran` text,
+114 top-level `surah` structure nodes, 6,236 `ayah` canonical units, and
+references such as `2:255`, `Surah 2`, and the source Arabic surah name. The
+Tanzil version is configured as `default_source` for its coverage without being
+described internally as an original edition.
+
 ## Running imports
 
 From the repository root:
@@ -52,6 +70,7 @@ docker compose up -d postgres
 uv sync --all-packages --frozen
 uv run --package intertext-backend alembic --config backend/alembic.ini upgrade head
 uv run --package intertext-ingest intertext-ingest import kjv
+uv run --package intertext-ingest intertext-ingest import quran
 uv run --package intertext-ingest intertext-ingest import sblgnt
 ```
 
@@ -90,7 +109,7 @@ An already imported version/checksum is a no-op. A new checksum creates a new im
 
 Implement the `SourceAdapter` acquisition protocol and register a `DatasetDefinition` with the existing parser. For example, a publisher API returning USFM would require a new source adapter but would reuse `UsfmParser`, normalization, mapping, persistence, and validation.
 
-`HttpZipSource`, `GitRepositorySource`, and `LocalSource` are currently available. None interprets textual references or canonical structure.
+`HttpFileSource`, `HttpZipSource`, `GitRepositorySource`, and `LocalSource` are currently available. None interprets textual references or canonical structure.
 
 ### New format
 
@@ -98,4 +117,4 @@ Implement the `SourceParser` protocol so it emits `ParsedSource` records contain
 
 ### Different corpus
 
-A Quran source uses the same acquisition and parser interfaces and the same normalized records. It supplies a Quran-specific canonical mapper/reference scheme that resolves normalized keys to Quran canonical units and structure nodes. The text-version, release, segment, segment-mapping, provenance, idempotency, and validation infrastructure remains unchanged; Bible book/chapter/verse components are not required by the shared representation.
+The Tanzil import demonstrates the different-corpus path: it uses the same acquisition, normalized records, persistence, provenance, idempotency, and generic validation infrastructure as the Bible imports, while supplying Quran XML parsing and a Quran-specific canonical mapper, reference scheme, coverage validator, and surah structure. Bible book/chapter/verse components are not required by the shared representation.
