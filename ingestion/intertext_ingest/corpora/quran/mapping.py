@@ -116,6 +116,7 @@ class QuranMapper:
                 session.add(unit)
                 existing_units[reference.key] = unit
             unit.metadata_ = {
+                **unit.metadata_,
                 "label": str(reference.components["ayah"]),
                 **reference.components,
             }
@@ -163,7 +164,7 @@ class QuranMapper:
         for surah, surah_units in sorted(units_by_surah.items()):
             first = min(surah_units, key=lambda unit: unit.ordinal)
             last = max(surah_units, key=lambda unit: unit.ordinal)
-            name = str(first.metadata_["surah_name"])
+            name = str(first.metadata_.get("surah_name") or f"Surah {surah}")
             node = existing_nodes.get(surah)
             if node is None:
                 node = StructureNode(
@@ -202,7 +203,7 @@ class QuranMapper:
         for unit in units:
             surah = int(unit.metadata_["surah"])
             ayah = int(unit.metadata_["ayah"])
-            name = str(unit.metadata_["surah_name"])
+            name = str(unit.metadata_.get("surah_name") or "")
             units_by_surah[surah].append(unit)
             for label_text in (f"{surah}:{ayah}", f"Surah {surah}:{ayah}"):
                 self._upsert_label(
@@ -213,20 +214,24 @@ class QuranMapper:
                     unit,
                     unit,
                 )
-            self._upsert_label(
-                session,
-                existing_labels,
-                scheme_id,
-                f"{name} {ayah}",
-                unit,
-                unit,
-            )
+            if name:
+                self._upsert_label(
+                    session,
+                    existing_labels,
+                    scheme_id,
+                    f"{name} {ayah}",
+                    unit,
+                    unit,
+                )
 
         for surah, surah_units in units_by_surah.items():
             first = min(surah_units, key=lambda unit: unit.ordinal)
             last = max(surah_units, key=lambda unit: unit.ordinal)
-            name = str(first.metadata_["surah_name"])
-            for label_text in (str(surah), f"Surah {surah}", name):
+            name = str(first.metadata_.get("surah_name") or "")
+            label_texts = [str(surah), f"Surah {surah}"]
+            if name:
+                label_texts.append(name)
+            for label_text in label_texts:
                 self._upsert_label(
                     session,
                     existing_labels,

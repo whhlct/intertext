@@ -1,0 +1,10 @@
+# Minimal Tanzil-shaped translation fixture.
+
+1|1|In the name of Allah, the Entirely Merciful, the Especially Merciful.
+1|2|[All] praise is [due] to Allah, Lord of the worlds -
+
+2|1|Alif, Lam, Meem.
+2|2|This is the Book | about which there is no doubt.
+
+# Name: Saheeh International
+# ID: en.sahih

@@ -117,6 +117,7 @@ def test_pipeline_maps_persists_and_is_idempotent(
 def test_quran_pipeline_maps_persists_and_is_idempotent(
     tmp_path: Path,
     quran_source: AcquiredSource,
+    quran_saheeh_source: AcquiredSource,
 ) -> None:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -135,7 +136,18 @@ def test_quran_pipeline_maps_persists_and_is_idempotent(
             required_canonical_keys=("quran.1.1", "quran.2.2"),
         ),
     )
+    saheeh = replace(
+        get_dataset("quran-saheeh-international"),
+        source=FixtureSource(quran_saheeh_source),
+        corpus_validator=QuranVersionValidator(
+            expected_surah_count=2,
+            expected_ayah_count=4,
+            required_canonical_keys=("quran.1.1", "quran.2.2"),
+        ),
+    )
 
+    first_saheeh = pipeline.run(saheeh, raw_root=tmp_path)
+    second_saheeh = pipeline.run(saheeh, raw_root=tmp_path)
     first = pipeline.run(quran, raw_root=tmp_path)
     second = pipeline.run(quran, raw_root=tmp_path)
 
@@ -143,6 +155,10 @@ def test_quran_pipeline_maps_persists_and_is_idempotent(
     assert second.created is False
     assert first.segment_count == 4
     assert first.mapping_count == 4
+    assert first_saheeh.created is True
+    assert second_saheeh.created is False
+    assert first_saheeh.segment_count == 4
+    assert first_saheeh.mapping_count == 4
     with sessions() as session:
         text = session.scalar(select(Text).where(Text.slug == "quran"))
         assert text is not None
@@ -163,14 +179,41 @@ def test_quran_pipeline_maps_persists_and_is_idempotent(
             "2:1",
             "2:2",
         }
+        assert session.scalar(select(func.count(TextVersion.id))) == 2
+        assert session.scalar(select(func.count(VersionRelease.id))) == 2
+        assert session.scalar(select(func.count(VersionSegment.id))) == 8
+        assert session.scalar(select(func.count(SegmentUnitMapping.id))) == 8
         labels = set(session.scalars(select(ReferenceLabel.normalized_label)))
         assert {"1:1", "surah 1", "الفاتحة"}.issubset(labels)
         first_segment = session.scalar(
-            select(VersionSegment).order_by(VersionSegment.sequence)
+            select(VersionSegment)
+            .join(
+                VersionRelease,
+                VersionRelease.id == VersionSegment.version_release_id,
+            )
+            .join(TextVersion, TextVersion.id == VersionRelease.version_id)
+            .where(TextVersion.slug == "tanzil-simple")
+            .order_by(VersionSegment.sequence)
         )
         assert first_segment is not None
         assert first_segment.text_plain == (
             "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+        )
+        translated_segment = session.scalar(
+            select(VersionSegment)
+            .join(
+                VersionRelease,
+                VersionRelease.id == VersionSegment.version_release_id,
+            )
+            .join(TextVersion, TextVersion.id == VersionRelease.version_id)
+            .where(
+                TextVersion.slug == "saheeh-international",
+                VersionSegment.source_identifier == "2:2",
+            )
+        )
+        assert translated_segment is not None
+        assert translated_segment.text_plain == (
+            "This is the Book | about which there is no doubt."
         )
         preferred = session.scalar(select(PreferredVersion))
         assert preferred is not None

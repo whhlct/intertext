@@ -8,6 +8,7 @@ from intertext_ingest.corpora.bible.validation import BibleVersionValidator
 from intertext_ingest.corpora.quran import QuranMapper, QuranVersionValidator
 from intertext_ingest.normalized import VersionDefinition
 from intertext_ingest.parsers.base import SourceParser
+from intertext_ingest.parsers.quran_pipe_text import QuranPipeTextParser
 from intertext_ingest.parsers.quran_xml import QuranXmlParser
 from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
 from intertext_ingest.parsers.usfm import UsfmParser
@@ -38,6 +39,9 @@ _SBLGNT_VERSION = re.compile(r"<tr><td>v(\d+(?:\.\d+)+)</td>", re.IGNORECASE)
 TANZIL_QURAN_SIMPLE_URL = (
     "https://tanzil.net/pub/download/index.php?marks=true&sajdah=true&"
     "tatweel=true&quranType=simple&outType=xml&agree=true"
+)
+TANZIL_SAHEEH_INTERNATIONAL_URL = (
+    "https://tanzil.net/trans/?transID=en.sahih&type=txt-2"
 )
 
 
@@ -163,6 +167,44 @@ def get_dataset(name: str) -> DatasetDefinition:
             corpus_validator=QuranVersionValidator(),
             preferred_role="default_source",
         )
+    if name == "quran-saheeh-international":
+        return DatasetDefinition(
+            name="quran-saheeh-international",
+            source=HttpFileSource(
+                identifier="en-sahih",
+                provider="tanzil",
+                url=TANZIL_SAHEEH_INTERNATIONAL_URL,
+                file_suffix=".txt",
+                textual_version="2011-04-24",
+                license=(
+                    "Non-commercial use only via Tanzil; other use requires "
+                    "permission from the translator or publisher"
+                ),
+            ),
+            parser=QuranPipeTextParser(),
+            version=VersionDefinition(
+                slug="saheeh-international",
+                title="Saheeh International",
+                abbreviation="Saheeh",
+                language_iso="en",
+                language_name="English",
+                language_native_name="English",
+                script="Latn",
+                direction="ltr",
+                version_type="translation",
+                publisher="Saheeh International",
+                rights_statement=(
+                    "Saheeh International English Quran translation, Tanzil ID "
+                    "en.sahih, last updated April 24, 2011. Tanzil provides this "
+                    "translation for non-commercial purposes only; other use "
+                    "requires necessary permission from the translator or "
+                    "publisher."
+                ),
+            ),
+            corpus_mapper=QuranMapper(),
+            corpus_validator=QuranVersionValidator(),
+        )
     raise ValueError(
-        f"Unsupported dataset '{name}'. Expected one of: kjv, quran, sblgnt"
+        f"Unsupported dataset '{name}'. Expected one of: kjv, quran, "
+        "quran-saheeh-international, sblgnt"
     )

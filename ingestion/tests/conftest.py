@@ -45,3 +45,13 @@ def quran_source(source_metadata: SourceMetadata) -> AcquiredSource:
         textual_version="1.1",
     )
     return AcquiredSource(FIXTURES / "quran" / "quran-simple.xml", metadata)
+
+
+@pytest.fixture
+def quran_saheeh_source(source_metadata: SourceMetadata) -> AcquiredSource:
+    metadata = replace(
+        source_metadata,
+        sha256=hashlib.sha256(b"fixture-quran-saheeh").hexdigest(),
+        textual_version="2011-04-24",
+    )
+    return AcquiredSource(FIXTURES / "quran" / "en.sahih.txt", metadata)

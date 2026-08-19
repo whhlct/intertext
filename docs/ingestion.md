@@ -61,6 +61,23 @@ references such as `2:255`, `Surah 2`, and the source Arabic surah name. The
 Tanzil version is configured as `default_source` for its coverage without being
 described internally as an original edition.
 
+### Saheeh International
+
+- Artifact: `https://tanzil.net/trans/?transID=en.sahih&type=txt-2`
+- Provider: Tanzil Project
+- Format: pipe-delimited Quran translation text (`surah|ayah|content`)
+- Translation ID: `en.sahih`
+- Last update: April 24, 2011, as recorded in the downloaded artifact
+- Rights: non-commercial use only through Tanzil; other use requires permission from the translator or publisher
+
+The parser ignores empty lines and metadata/comment lines beginning with `#`,
+splits each content line at only the first two `|` delimiters, validates
+contiguous surah/ayah ordering, and preserves translation content without
+normalizing or rewriting it. It emits Quran source references that map all
+6,236 translated segments to the shared Quran canonical units. Saheeh
+International is a translation and is not configured with a source-language
+role.
+
 ## Running imports
 
 From the repository root:
@@ -71,6 +88,7 @@ uv sync --all-packages --frozen
 uv run --package intertext-backend alembic --config backend/alembic.ini upgrade head
 uv run --package intertext-ingest intertext-ingest import kjv
 uv run --package intertext-ingest intertext-ingest import quran
+uv run --package intertext-ingest intertext-ingest import quran-saheeh-international
 uv run --package intertext-ingest intertext-ingest import sblgnt
 ```
 
