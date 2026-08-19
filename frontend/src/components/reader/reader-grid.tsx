@@ -6,7 +6,67 @@ import { type CSSProperties, type DragEvent, type KeyboardEvent, useState } from
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import type { ReaderResponse } from "@/types/api";
+import type { ReaderResponse, ReaderSegment, ReaderToken, ReaderTokenGloss } from "@/types/api";
+
+function preferredGloss(token: ReaderToken): ReaderTokenGloss | undefined {
+  return (
+    token.glosses.find(
+      (gloss) => gloss.language.iso_code === "en" && gloss.gloss_type === "contextual",
+    ) ??
+    token.glosses.find((gloss) => gloss.language.iso_code === "en") ??
+    token.glosses.find((gloss) => gloss.gloss_type === "contextual") ??
+    token.glosses[0]
+  );
+}
+
+function tokenSurface(segment: ReaderSegment, tokenIndex: number): string {
+  const tokens = segment.tokens ?? [];
+  const token = tokens[tokenIndex];
+  if (token.char_start === null || token.char_end === null) return token.surface;
+  const previousEnd = tokens[tokenIndex - 1]?.char_end;
+  const nextStart = tokens[tokenIndex + 1]?.char_start;
+  const before = segment.text.slice(previousEnd ?? 0, token.char_start);
+  const after = segment.text.slice(token.char_end, nextStart ?? segment.text.length);
+  // Punctuation adjacent to the previous word is its suffix; punctuation after
+  // whitespace and adjacent to this word is its prefix (for example SBLGNT ⸀).
+  const prefix =
+    tokenIndex === 0 || (before.startsWith(" ") && !before.endsWith(" "))
+      ? before.trim()
+      : "";
+  const suffix =
+    nextStart === undefined || (after.length > 0 && !after.startsWith(" "))
+      ? after.trim()
+      : "";
+  return `${prefix}${token.surface}${suffix}`;
+}
+
+function InterlinearSegment({ segment }: { segment: ReaderSegment }) {
+  const tokens = segment.tokens ?? [];
+  const hasGlosses = tokens.some((token) => preferredGloss(token));
+  if (!hasGlosses) return <>{segment.text}</>;
+
+  return (
+    <span className="reader-interlinear" aria-label={segment.text}>
+      {tokens.map((token, index) => {
+        const gloss = preferredGloss(token);
+        return (
+          <span className="reader-interlinear-token" key={token.id}>
+            <span className="reader-token-surface">{tokenSurface(segment, index)}</span>
+            {gloss ? (
+              <span
+                className="reader-token-gloss"
+                lang={gloss.language.iso_code}
+                title={`${gloss.source} ${gloss.gloss_type} gloss`}
+              >
+                {gloss.gloss}
+              </span>
+            ) : null}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 export function ReaderSkeleton({ columns = 2 }: { columns?: number }) {
   return (
@@ -186,7 +246,7 @@ export function ReaderGrid({
                         )}
                         key={segment.id}
                       >
-                        {segment.text}
+                        <InterlinearSegment segment={segment} />
                         {segment.mapping_type !== "direct" ? (
                           <span className="mapping-note">{segment.mapping_type}</span>
                         ) : null}

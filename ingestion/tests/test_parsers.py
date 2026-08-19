@@ -1,5 +1,11 @@
+import unicodedata
+
 from intertext_ingest.normalized import AcquiredSource
+from intertext_ingest.parsers.oshb_osis import OshbOsisParser
+from intertext_ingest.parsers.quran_pipe_text import QuranPipeTextParser
+from intertext_ingest.parsers.quran_xml import QuranXmlParser
 from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
+from intertext_ingest.parsers.tagnt import TagntParser
 from intertext_ingest.parsers.usfm import UsfmParser
 
 
@@ -51,3 +57,127 @@ def test_sblgnt_xml_parser_emits_source_references(
         "w",
     }
     assert not hasattr(parsed, "language_iso")
+
+
+def test_oshb_osis_parser_preserves_hebrew_words_and_annotations(
+    oshb_source: AcquiredSource,
+) -> None:
+    parsed = OshbOsisParser().parse(oshb_source)
+
+    assert len(parsed.segments) == 3
+    first = parsed.segments[0]
+    assert first.source_reference.scheme == "oshb_osis"
+    assert first.source_reference.components == {
+        "book_id": "Gen",
+        "chapter": 1,
+        "verse": 1,
+    }
+    assert first.text == (
+        "בְּרֵאשִׁ֖ית בָּרָ֣א אֱלֹהִ֑ים אֵ֥ת הַשָּׁמַ֖יִם וְאֵ֥ת הָאָֽרֶץ׃"
+    )
+    first_word = first.tokens[0]
+    assert first_word.surface == "בְּ/רֵאשִׁ֖ית"
+    assert unicodedata.normalize("NFC", first_word.surface) != first_word.surface
+    assert first_word.metadata == {
+        "source_id": "01xeN",
+        "lemma": "b/7225",
+        "morphology": "HR/Ncfsa",
+        "cantillation_hierarchy": "1.0",
+        "osis_attributes": {
+            "lemma": "b/7225",
+            "n": "1.0",
+            "morph": "HR/Ncfsa",
+            "id": "01xeN",
+        },
+    }
+    assert first.content_markup["unicode_normalization"] == "none"
+    assert parsed.segments[1].text.endswith("עַל־פְּנֵ֣י הַמָּֽיִם׃")
+    assert "Fixture note" not in parsed.segments[1].text
+    variant = parsed.segments[1].content_markup["elements"][-1]
+    qere_word = variant["children"][1]["children"][0]
+    assert qere_word["attributes"] == {
+        "lemma": "4325",
+        "n": "0",
+        "morph": "HNcmpa",
+        "id": "01QER",
+    }
+
+
+def test_tagnt_parser_preserves_readings_glosses_editions_and_provenance(
+    tagnt_source: AcquiredSource,
+) -> None:
+    parsed = TagntParser().parse(tagnt_source)
+
+    assert len(parsed.entries) == 18
+    first = parsed.entries[0]
+    assert first.source_identifier == "Mrk.1.1#01=NKO"
+    assert first.source_reference.scheme == "tagnt"
+    assert first.source_reference.components == {
+        "book_code": "Mrk",
+        "chapter": 1,
+        "verse": 1,
+    }
+    assert first.lemma == "ἀρχή"
+    assert first.normalized_lemma == "αρχη"
+    assert first.dictionary_gloss == "beginning"
+    reading = first.readings[0]
+    assert reading.surface == "Ἀρχὴ"
+    assert reading.contextual_gloss == "[The] beginning"
+    assert reading.editions == ("NA28", "SBL", "TR")
+    assert first.metadata["source_file"] == "TAGNT Mark - fixture.txt"
+    moved = next(
+        entry.readings[0]
+        for entry in parsed.entries
+        if entry.source_identifier == "Mrk.1.3#02=NKO"
+    )
+    assert moved.edition_markers == ("NA28", "SBL»1", "TR")
+    assert moved.displacement == 1
+    meaning_variant = parsed.entries[-2].readings[1]
+    assert parsed.entries[-2].source_reference.label == "Mrk.1.4"
+    assert parsed.entries[-2].metadata["reference_variants"] == "{1.3}"
+    assert meaning_variant.surface == "ὀργισθεὶς"
+    assert meaning_variant.contextual_gloss == "being angered"
+    assert meaning_variant.editions == ("SBL",)
+    spelling_variant = parsed.entries[-1].readings[1]
+    assert spelling_variant.surface == "ἀλλὰ"
+    assert spelling_variant.editions == ("SBL",)
+
+
+def test_quran_xml_parser_preserves_ayah_text_and_structured_attributes(
+    quran_source: AcquiredSource,
+) -> None:
+    parsed = QuranXmlParser().parse(quran_source)
+
+    assert len(parsed.segments) == 4
+    first = parsed.segments[0]
+    assert first.source_reference.scheme == "quran_xml"
+    assert first.source_reference.components == {
+        "surah": 1,
+        "ayah": 1,
+        "surah_name": "الفاتحة",
+    }
+    assert first.text == "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+    third = parsed.segments[2]
+    assert third.source_reference.label == "2:1"
+    assert third.content_markup["attributes"]["bismillah"] == (
+        "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+    )
+    assert third.text == "الم"
+
+
+def test_quran_pipe_text_parser_ignores_comments_and_preserves_content(
+    quran_saheeh_source: AcquiredSource,
+) -> None:
+    parsed = QuranPipeTextParser().parse(quran_saheeh_source)
+
+    assert len(parsed.segments) == 4
+    first = parsed.segments[0]
+    assert first.source_reference.scheme == "quran_pipe_text"
+    assert first.source_reference.components == {"surah": 1, "ayah": 1}
+    assert first.text == (
+        "In the name of Allah, the Entirely Merciful, the Especially Merciful."
+    )
+    assert parsed.segments[-1].text == (
+        "This is the Book | about which there is no doubt."
+    )
+    assert parsed.segments[-1].metadata["source_line"] == 7

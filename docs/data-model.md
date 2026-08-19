@@ -574,6 +574,7 @@ Suggested fields:
 id                  UUID PK
 token_id            UUID FK -> tokens
 target_language_id  UUID FK -> languages
+enrichment_import_id UUID FK -> enrichment_imports
 gloss               text
 gloss_type          text
 source              text nullable
@@ -591,6 +592,12 @@ generated
 ```
 
 A human-curated gloss and generated gloss must remain distinguishable.
+
+`enrichment_imports` records an enrichment's target release, type, provider
+label, resolved source revision, SHA-256 checksum, parser version, import time,
+complete source metadata, and alignment diagnostics. This keeps token-level
+provenance separate from the authoritative `VersionRelease` while making an
+enrichment import idempotent and reproducible.
 
 ## 19. Morphology
 

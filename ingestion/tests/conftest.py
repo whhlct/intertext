@@ -35,3 +35,49 @@ def sblgnt_source(source_metadata: SourceMetadata) -> AcquiredSource:
         sha256=hashlib.sha256(b"fixture-sblgnt").hexdigest(),
     )
     return AcquiredSource(FIXTURES / "sblgnt" / "xml", metadata)
+
+
+@pytest.fixture
+def oshb_source(source_metadata: SourceMetadata) -> AcquiredSource:
+    metadata = replace(
+        source_metadata,
+        sha256=hashlib.sha256(b"fixture-oshb").hexdigest(),
+        textual_version="WLC 4.20 / OSHB morphology 2018.12.14",
+    )
+    return AcquiredSource(FIXTURES / "oshb" / "wlc", metadata)
+
+
+@pytest.fixture
+def tagnt_source(source_metadata: SourceMetadata) -> AcquiredSource:
+    metadata = replace(
+        source_metadata,
+        provider="stepbible",
+        source_locator="https://github.com/STEPBible/STEPBible-Data.git",
+        source_revision="tagnt-fixture-commit",
+        sha256=hashlib.sha256(b"fixture-tagnt").hexdigest(),
+        license="CC BY 4.0",
+        textual_version="TAGNT fixture",
+    )
+    return AcquiredSource(
+        FIXTURES / "tagnt" / "Translators Amalgamated OT+NT", metadata
+    )
+
+
+@pytest.fixture
+def quran_source(source_metadata: SourceMetadata) -> AcquiredSource:
+    metadata = replace(
+        source_metadata,
+        sha256=hashlib.sha256(b"fixture-quran").hexdigest(),
+        textual_version="1.1",
+    )
+    return AcquiredSource(FIXTURES / "quran" / "quran-simple.xml", metadata)
+
+
+@pytest.fixture
+def quran_saheeh_source(source_metadata: SourceMetadata) -> AcquiredSource:
+    metadata = replace(
+        source_metadata,
+        sha256=hashlib.sha256(b"fixture-quran-saheeh").hexdigest(),
+        textual_version="2011-04-24",
+    )
+    return AcquiredSource(FIXTURES / "quran" / "en.sahih.txt", metadata)

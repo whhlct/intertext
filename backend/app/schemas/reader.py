@@ -27,12 +27,30 @@ class ReaderVersion(BaseModel):
     roles: list[str] = Field(default_factory=list)
 
 
+class ReaderTokenGloss(BaseModel):
+    gloss: str
+    gloss_type: str
+    source: str
+    language: LanguageSummary
+
+
+class ReaderToken(BaseModel):
+    id: uuid.UUID
+    index: int
+    surface: str
+    normalized: str | None
+    char_start: int | None
+    char_end: int | None
+    glosses: list[ReaderTokenGloss] = Field(default_factory=list)
+
+
 class ReaderSegment(BaseModel):
     id: uuid.UUID
     sequence: int
     text: str
     content_markup: dict[str, Any]
     mapping_type: str
+    tokens: list[ReaderToken] = Field(default_factory=list)
 
 
 class ReaderUnit(BaseModel):
@@ -48,4 +66,3 @@ class ReaderResponse(BaseModel):
     reference: ReaderReference
     versions: list[ReaderVersion]
     units: list[ReaderUnit]
-

@@ -55,9 +55,77 @@ const reader: ReaderResponse = {
           {
             id: "greek-segment",
             sequence: 1,
-            text: "Ἀρχὴ τοῦ εὐαγγελίου",
+            text: "Ἀρχὴ τοῦ ⸀εὐαγγελίου.",
             content_markup: {},
             mapping_type: "direct",
+            tokens: [
+              {
+                id: "token-1",
+                index: 0,
+                surface: "Ἀρχὴ",
+                normalized: "αρχη",
+                char_start: 0,
+                char_end: 4,
+                glosses: [
+                  {
+                    gloss: "[The] beginning",
+                    gloss_type: "contextual",
+                    source: "TAGNT",
+                    language: {
+                      iso_code: "en",
+                      name: "English",
+                      native_name: "English",
+                      script: "Latn",
+                      direction: "ltr",
+                    },
+                  },
+                ],
+              },
+              {
+                id: "token-2",
+                index: 1,
+                surface: "τοῦ",
+                normalized: "του",
+                char_start: 5,
+                char_end: 8,
+                glosses: [
+                  {
+                    gloss: "of the",
+                    gloss_type: "contextual",
+                    source: "TAGNT",
+                    language: {
+                      iso_code: "en",
+                      name: "English",
+                      native_name: "English",
+                      script: "Latn",
+                      direction: "ltr",
+                    },
+                  },
+                ],
+              },
+              {
+                id: "token-3",
+                index: 2,
+                surface: "εὐαγγελίου",
+                normalized: "ευαγγελιου",
+                char_start: 10,
+                char_end: 20,
+                glosses: [
+                  {
+                    gloss: "gospel",
+                    gloss_type: "contextual",
+                    source: "TAGNT",
+                    language: {
+                      iso_code: "en",
+                      name: "English",
+                      native_name: "English",
+                      script: "Latn",
+                      direction: "ltr",
+                    },
+                  },
+                ],
+              },
+            ],
           },
         ],
         kjv: [
@@ -84,7 +152,11 @@ describe("ReaderGrid", () => {
       englishHeading.compareDocumentPosition(sourceHeading) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(screen.getByText("Ἀρχὴ τοῦ εὐαγγελίου")).toBeInTheDocument();
+    expect(screen.getByText("Ἀρχὴ")).toBeInTheDocument();
+    expect(screen.getByText("⸀εὐαγγελίου.")).toBeInTheDocument();
+    expect(screen.getByText("[The] beginning")).toBeInTheDocument();
+    expect(screen.getByText("of the")).toBeInTheDocument();
+    expect(screen.getByText("gospel")).toBeInTheDocument();
     expect(screen.getByText("The beginning of the gospel")).toBeInTheDocument();
     expect(screen.getByLabelText("Unit 1")).toBeInTheDocument();
     expect(screen.getByText("Source")).toBeInTheDocument();

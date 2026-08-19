@@ -110,6 +110,21 @@ def test_reader_resolves_and_aligns_selected_versions(
     assert body["units"][0]["segments"]["english"][0]["text"] == (
         "The beginning of the gospel"
     )
+    greek_segment = body["units"][0]["segments"]["greek"][0]
+    assert [token["surface"] for token in greek_segment["tokens"]] == [
+        "Ἀρχὴ",
+        "τοῦ",
+        "εὐαγγελίου",
+    ]
+    assert [token["glosses"][0]["gloss"] for token in greek_segment["tokens"]] == [
+        "[The] beginning",
+        "of the",
+        "gospel",
+    ]
+    assert greek_segment["tokens"][0]["glosses"][0]["language"]["iso_code"] == (
+        "en"
+    )
+    assert body["units"][0]["segments"]["english"][0]["tokens"] == []
     assert body["units"][1]["segments"]["greek"][0]["mapping_type"] == ("spans")
 
 

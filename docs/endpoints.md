@@ -96,4 +96,11 @@ resolved range. Within each canonical unit, `segments` includes only version
 keys that have content for that unit; unavailable versions are omitted instead
 of being represented by empty lists.
 
+Segments also include an ordered `tokens` array when a token stream has been
+persisted. Each token contains its authoritative surface, normalized comparison
+form, character offsets, and available glosses with language, type, and source.
+For SBLGNT, contextual English glosses sourced from TAGNT are returned here for
+word-by-word/interlinear display. Segments without stored tokens return an empty
+array.
+
 Returns `404` when the text, reference, or requested current version is unavailable. Returns `422` for an invalid canonical range or malformed `versions` value such as `kjv,,sblgnt`.

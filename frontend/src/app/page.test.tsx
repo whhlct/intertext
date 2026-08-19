@@ -1,12 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import Home from "./page";
 
 describe("Home", () => {
   afterEach(() => {
+    cleanup();
     vi.unstubAllGlobals();
+    window.history.replaceState(null, "", "/");
   });
 
   it("renders the comparative reader shell while the library loads", () => {
@@ -208,5 +210,135 @@ describe("Home", () => {
         String(url).includes("versions=kjv%2Csblgnt"),
       ),
     ).toBe(true);
+  });
+
+  it("reads a top-level leaf section without requiring child chapters", async () => {
+    const jsonResponse = (body: unknown) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(body),
+      });
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "/api/v1/texts") {
+        return jsonResponse([
+          { id: "quran", slug: "quran", title: "Quran", description: null },
+        ]);
+      }
+      if (url.endsWith("/versions")) {
+        return jsonResponse([
+          {
+            id: "tanzil",
+            slug: "tanzil-simple",
+            title: "Tanzil Quran Text (Simple)",
+            abbreviation: "Tanzil Simple",
+            version_type: "digital_edition",
+            language: {
+              iso_code: "ar",
+              name: "Arabic",
+              native_name: "العربية",
+              script: "Arab",
+              direction: "rtl",
+            },
+            current_release_id: "release-tanzil",
+          },
+        ]);
+      }
+      if (url.endsWith("/structure")) {
+        return jsonResponse([
+          {
+            id: "al-fatihah",
+            parent_id: null,
+            node_type: "surah",
+            title: "الفاتحة",
+            short_title: "1",
+            ordinal: 1,
+            path: "quran.1",
+            depth: 0,
+            start_unit_ordinal: 1001,
+            end_unit_ordinal: 1007,
+          },
+        ]);
+      }
+      if (url.includes("/structure/al-fatihah/children")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/references/resolve")) {
+        return jsonResponse({
+          text_slug: "quran",
+          input: "الفاتحة",
+          normalized_reference: "الفاتحة",
+          label: "الفاتحة",
+          reference_scheme: "Intertext Quran",
+          start: { id: "ayah", key: "quran.1.1", ordinal: 1001 },
+          end: { id: "ayah", key: "quran.1.7", ordinal: 1007 },
+        });
+      }
+      if (url.includes("/api/v1/reader/")) {
+        return jsonResponse({
+          text: { id: "quran", slug: "quran", title: "Quran" },
+          reference: {
+            label: "الفاتحة",
+            start: "quran.1.1",
+            end: "quran.1.7",
+          },
+          versions: [
+            {
+              id: "tanzil",
+              slug: "tanzil-simple",
+              title: "Tanzil Quran Text (Simple)",
+              abbreviation: "Tanzil Simple",
+              language: {
+                iso_code: "ar",
+                name: "Arabic",
+                native_name: "العربية",
+                script: "Arab",
+                direction: "rtl",
+              },
+              roles: ["default_source"],
+            },
+          ],
+          units: [
+            {
+              id: "ayah",
+              key: "quran.1.1",
+              label: "1",
+              ordinal: 1001,
+              segments: {
+                "tanzil-simple": [
+                  {
+                    id: "segment",
+                    sequence: 1,
+                    text: "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ",
+                    content_markup: {},
+                    mapping_type: "direct",
+                  },
+                ],
+              },
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Home />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "الفاتحة" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Subsections" })).toBeNull();
   });
 });

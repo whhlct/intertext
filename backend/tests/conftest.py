@@ -7,6 +7,7 @@ from app.db.session import get_db_session
 from app.main import app
 from app.models import (
     CanonicalUnit,
+    EnrichmentImport,
     Language,
     PreferredVersion,
     ReferenceLabel,
@@ -15,6 +16,8 @@ from app.models import (
     StructureNode,
     Text,
     TextVersion,
+    Token,
+    TokenGloss,
     VersionRelease,
     VersionSegment,
 )
@@ -173,6 +176,50 @@ def canonical_fixture(database_session: Session) -> None:
     )
     database_session.add_all([greek_segment, english_one, english_two])
     database_session.flush()
+    enrichment_import = EnrichmentImport(
+        target_version_release_id=greek_release.id,
+        enrichment_type="token_gloss",
+        source="TAGNT",
+        source_revision="fixture-commit",
+        source_sha256="c" * 64,
+        parser_version="tagnt-tsv-1",
+    )
+    database_session.add(enrichment_import)
+    database_session.flush()
+    greek_tokens = [
+        Token(
+            segment_id=greek_segment.id,
+            token_index=index,
+            surface=surface,
+            normalized=normalized,
+            language_id=greek.id,
+        )
+        for index, (surface, normalized) in enumerate(
+            [
+                ("Ἀρχὴ", "αρχη"),
+                ("τοῦ", "του"),
+                ("εὐαγγελίου", "ευαγγελιου"),
+            ]
+        )
+    ]
+    database_session.add_all(greek_tokens)
+    database_session.flush()
+    for token, gloss in zip(
+        greek_tokens,
+        ["[The] beginning", "of the", "gospel"],
+        strict=True,
+    ):
+        database_session.add(
+            TokenGloss(
+                token_id=token.id,
+                target_language_id=english.id,
+                enrichment_import_id=enrichment_import.id,
+                gloss=gloss,
+                gloss_type="contextual",
+                source="TAGNT",
+                confidence=1,
+            )
+        )
     database_session.add_all(
         [
             SegmentUnitMapping(

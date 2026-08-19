@@ -7,10 +7,22 @@ from zipfile import ZipFile
 
 import httpx
 from conftest import FIXTURES
-from intertext_ingest.datasets import detect_sblgnt_version
+from intertext_ingest.datasets import detect_oshb_version, detect_sblgnt_version
+from intertext_ingest.enrichments import get_token_enrichment
 from intertext_ingest.sources.git import GitRepositorySource
-from intertext_ingest.sources.http import HttpZipSource
+from intertext_ingest.sources.http import HttpFileSource, HttpZipSource
 from intertext_ingest.sources.local import LocalSource
+
+
+def test_tagnt_enrichment_uses_generic_git_source_and_official_path() -> None:
+    enrichment = get_token_enrichment("tagnt-sblgnt")
+
+    assert isinstance(enrichment.source, GitRepositorySource)
+    assert enrichment.source.repository_url == (
+        "https://github.com/STEPBible/STEPBible-Data.git"
+    )
+    assert enrichment.source.content_subpath == "Translators Amalgamated OT+NT"
+    assert enrichment.target_version_slug == "sblgnt"
 
 
 def test_http_zip_source_downloads_extracts_and_reuses_checksum_cache(
@@ -50,6 +62,45 @@ def test_http_zip_source_downloads_extracts_and_reuses_checksum_cache(
     assert (
         first.metadata.sha256 == hashlib.sha256(archive_buffer.getvalue()).hexdigest()
     )
+    assert second.metadata == first.metadata
+
+
+def test_http_file_source_downloads_and_reuses_checksum_cache(
+    tmp_path: Path,
+) -> None:
+    content = (FIXTURES / "quran" / "quran-simple.xml").read_bytes()
+    request_count = 0
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(
+            200,
+            content=content,
+            headers={
+                "Content-Type": "application/octet-stream; charset=utf-8",
+                "Content-Disposition": "attachment; filename=quran-simple.xml",
+            },
+            request=request,
+        )
+
+    source = HttpFileSource(
+        identifier="quran-simple-fixture",
+        provider="tanzil",
+        url="https://example.test/quran.xml",
+        license="CC BY 3.0",
+        file_suffix=".xml",
+        textual_version="1.1",
+        transport=httpx.MockTransport(respond),
+    )
+    first = source.acquire(tmp_path)
+    second = source.acquire(tmp_path)
+
+    assert request_count == 1
+    assert first.content_path.read_bytes() == content
+    assert first.metadata.sha256 == hashlib.sha256(content).hexdigest()
+    assert first.metadata.source_revision == first.metadata.sha256
+    assert first.metadata.attributes["artifact_type"] == "file"
     assert second.metadata == first.metadata
 
 
@@ -100,6 +151,14 @@ def test_git_source_records_commit_and_archive_checksum(tmp_path: Path) -> None:
     assert acquired.metadata.textual_version == "1.2"
     assert acquired.content_path.joinpath("Mark.xml").is_file()
     assert cached.metadata == acquired.metadata
+
+
+def test_oshb_textual_version_is_detected_from_osis_metadata() -> None:
+    repository = FIXTURES / "oshb"
+
+    assert detect_oshb_version(repository) == (
+        "WLC 4.20 / OSHB morphology 2018.12.14"
+    )
 
 
 def test_local_source_copies_artifact_and_records_provenance(tmp_path: Path) -> None:

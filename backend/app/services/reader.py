@@ -9,6 +9,7 @@ from app.queries.reader import (
     select_aligned_segments,
     select_canonical_range,
     select_preferred_roles,
+    select_segment_tokens,
 )
 from app.schemas.library import LanguageSummary
 from app.schemas.reader import (
@@ -16,6 +17,8 @@ from app.schemas.reader import (
     ReaderResponse,
     ReaderSegment,
     ReaderText,
+    ReaderToken,
+    ReaderTokenGloss,
     ReaderUnit,
     ReaderVersion,
 )
@@ -81,12 +84,60 @@ def get_reader(
         version_slug_by_release = {
             release.id: version.slug for version, _, release in version_rows
         }
-        for unit_id, _version_id, segment, mapping in session.execute(
-            select_aligned_segments(
-                [unit.id for unit in units],
-                [release.id for _, _, release in version_rows],
+        aligned_rows = list(
+            session.execute(
+                select_aligned_segments(
+                    [unit.id for unit in units],
+                    [release.id for _, _, release in version_rows],
+                )
             )
-        ):
+        )
+        segment_ids = list({row[2].id for row in aligned_rows})
+        tokens_by_segment: dict[uuid.UUID, list[ReaderToken]] = defaultdict(list)
+        token_by_id: dict[uuid.UUID, ReaderToken] = {}
+        seen_glosses: dict[uuid.UUID, set[tuple[str, str, str]]] = defaultdict(set)
+        if segment_ids:
+            for token, gloss, gloss_language, _enrichment_import in session.execute(
+                select_segment_tokens(segment_ids)
+            ):
+                reader_token = token_by_id.get(token.id)
+                if reader_token is None:
+                    reader_token = ReaderToken(
+                        id=token.id,
+                        index=token.token_index,
+                        surface=token.surface,
+                        normalized=token.normalized,
+                        char_start=token.char_start,
+                        char_end=token.char_end,
+                    )
+                    token_by_id[token.id] = reader_token
+                    tokens_by_segment[token.segment_id].append(reader_token)
+                if gloss is None or gloss_language is None:
+                    continue
+                gloss_key = (
+                    gloss_language.iso_code,
+                    gloss.gloss_type,
+                    gloss.source,
+                )
+                if gloss_key in seen_glosses[token.id]:
+                    continue
+                seen_glosses[token.id].add(gloss_key)
+                reader_token.glosses.append(
+                    ReaderTokenGloss(
+                        gloss=gloss.gloss,
+                        gloss_type=gloss.gloss_type,
+                        source=gloss.source,
+                        language=LanguageSummary(
+                            iso_code=gloss_language.iso_code,
+                            name=gloss_language.name,
+                            native_name=gloss_language.native_name,
+                            script=gloss_language.script,
+                            direction=gloss_language.direction,
+                        ),
+                    )
+                )
+
+        for unit_id, _version_id, segment, mapping in aligned_rows:
             version_slug = version_slug_by_release[segment.version_release_id]
             segment_map[unit_id][version_slug].append(
                 ReaderSegment(
@@ -95,6 +146,7 @@ def get_reader(
                     text=segment.text_plain,
                     content_markup=segment.content_markup,
                     mapping_type=mapping.mapping_type,
+                    tokens=tokens_by_segment.get(segment.id, []),
                 )
             )
 
