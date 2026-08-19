@@ -1,0 +1,23 @@
+<book id="Mk">
+  <title>ΚΑΤΑ ΜΑΡΚΟΝ</title>
+  <p>
+    <verse-number id="Mark 1:1">1:1</verse-number>
+    <w>Ἀρχὴ</w><suffix></suffix>
+    <w>τοῦ</w><suffix></suffix>
+    <w>εὐαγγελίου</w><suffix></suffix>
+    <w>Ἰησοῦ</w><suffix></suffix>
+    <prefix> ⸀</prefix><w>χριστοῦ</w><suffix>. </suffix>
+    <verse-number id="Mark 1:2">2</verse-number>
+    <prefix> ⸀</prefix><w>Καθὼς</w><suffix></suffix>
+    <w>γέγραπται</w><suffix></suffix>
+    <w>ἐν</w><suffix></suffix>
+    <w>τῷ</w><suffix></suffix>
+    <w>προφήτῃ</w><suffix>· </suffix>
+    <verse-number id="Mark 1:3">3</verse-number>
+    <w>φωνὴ</w><suffix></suffix>
+    <w>βοῶντος</w><suffix></suffix>
+    <w>ἐν</w><suffix></suffix>
+    <w>τῇ</w><suffix></suffix>
+    <w>ἐρήμῳ</w><suffix>. </suffix>
+  </p>
+</book>

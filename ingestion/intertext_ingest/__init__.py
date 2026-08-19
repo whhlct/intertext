@@ -1,2 +1,1 @@
 """Intertext ingestion package."""
-

@@ -159,7 +159,8 @@ uv run --package intertext-backend pytest backend/tests
 Run ingestion commands:
 
 ```bash
-uv run --package intertext-ingest python -m intertext_ingest.cli
+uv run --package intertext-ingest intertext-ingest import kjv
+uv run --package intertext-ingest intertext-ingest import sblgnt
 ```
 
 Add a backend dependency:
@@ -271,6 +272,7 @@ Treat these as high-priority constraints.
 * [`docs/project-structure.md`](docs/project-structure.md) — repository/folder organization and uv workspace layout.
 * [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md) — recommended build order and milestones.
 * [`docs/engineering-guidelines.md`](docs/engineering-guidelines.md) — conventions for agents and contributors.
+* [`docs/ingestion.md`](docs/ingestion.md) — source acquisition, parsing, provenance, and import commands.
 * [`docs/decisions/0001-postgresql.md`](docs/decisions/0001-postgresql.md) — PostgreSQL decision.
 * [`docs/decisions/0002-sqlalchemy.md`](docs/decisions/0002-sqlalchemy.md) — SQLAlchemy over SQLModel.
 * [`docs/decisions/0003-canonical-text-model.md`](docs/decisions/0003-canonical-text-model.md) — canonical-unit architecture.

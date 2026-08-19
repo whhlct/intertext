@@ -3,7 +3,22 @@ name = "intertext-ingest"
 version = "0.1.0"
 description = "Intertext data ingestion package"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "defusedxml>=0.7,<1",
+    "httpx>=0.28,<1",
+    "intertext-backend",
+]
+
+[project.scripts]
+intertext-ingest = "intertext_ingest.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9",
+]
+
+[tool.uv.sources]
+intertext-backend = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
@@ -12,3 +27,5 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["intertext_ingest"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
