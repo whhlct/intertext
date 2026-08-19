@@ -164,6 +164,7 @@ uv run --package intertext-ingest intertext-ingest import oshb
 uv run --package intertext-ingest intertext-ingest import quran
 uv run --package intertext-ingest intertext-ingest import quran-saheeh-international
 uv run --package intertext-ingest intertext-ingest import sblgnt
+uv run --package intertext-ingest intertext-ingest enrich tagnt-sblgnt --allow-partial
 ```
 
 Add a backend dependency:

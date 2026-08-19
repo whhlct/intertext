@@ -1,0 +1,20 @@
+TAGNT fixture - STEPBible CC BY 4.0
+Word & Type	Greek	English translation	dStrongs = Grammar	Dictionary form =  Gloss	editions	Meaning variants	Spelling variants	Spanish translation	Sub-meaning	Conjoin word	sStrong+Instance	Alt Strongs	Variant Notes			
+Mrk.1.1#01=NKO	Ἀρχὴ (Archē)	[The] beginning	G0746=N-NSF	ἀρχή=beginning	NA28+SBL+TR				beginning	#01	G0746					
+Mrk.1.1#02=NKO	τοῦ (tou)	of the	G3588=T-GSN	ὁ=the/this/who	NA28+SBL+TR				the	#02	G3588					
+Mrk.1.1#03=NKO	εὐαγγελίου (euangeliou)	gospel	G2098=N-GSN	εὐαγγέλιον=gospel	NA28+SBL+TR				gospel	#03	G2098					
+Mrk.1.1#04=NKO	Ἰησοῦ (Iēsou)	of Jesus	G2424=N-GSM-P	Ἰησοῦς=Jesus/Joshua	NA28+SBL+TR				Jesus	#04	G2424					
+Mrk.1.1#05=NKO	Χριστοῦ (Christou)	Christ	G5547=N-GSM-T	Χριστός=Christ	NA28+SBL+TR				Christ	#05	G5547					
+Mrk.1.1#06=K	υἱοῦ (huiou)	Son	G5207=N-GSM	υἱός=son	TR				son	#06	G5207					
+Mrk.1.2#01=NKO	καθὼς (kathōs)	Even as	G2531=CONJ	καθώς=as/just as	NA28+SBL+TR				as	#01	G2531					
+Mrk.1.2#02=NKO	γέγραπται (gegraptai)	it has been written	G1125=V-RPI-3S	γράφω=to write	NA28+SBL+TR				it is written	#02	G1125					
+Mrk.1.2#03=NKO	ἐν (en)	in	G1722=PREP	ἐν=in/on/among	NA28+SBL+TR				in	#03	G1722					
+Mrk.1.2#06=NKO	τῷ (tō)	in the	G3588=T-DSM	ὁ=the/this/who	NA28+SBL+TR				the	#06	G3588					
+Mrk.1.2#07=NKO	προφήτῃ· (prophētē)	prophet:	G4396=N-DSM	προφήτης=prophet	NA28+SBL+TR				prophet	#07	G4396					
+Mrk.1.3#01=NKO	φωνὴ (phōnē)	[The] voice	G5456=N-NSF	φωνή=voice/sound	NA28+SBL+TR				voice	#01	G5456					
+Mrk.1.3#02=NKO	ἐν (en)	in	G1722=PREP	ἐν=in/on/among	NA28+SBL»1+TR				in	#02	G1722					
+Mrk.1.3#03=NKO	βοῶντος (boōntos)	of one crying	G0994=V-PAP-GSM	βοάω=to cry out	NA28+SBL«1+TR				to cry out	#03	G0994					
+Mrk.1.3#04=NKO	τῇ (tēa)	the	G3588=T-DSF	ὁ=the/this/who	NA28+SBL+TR				the	#04	G3588					
+Mrk.1.3#05=NKO	ἐρήμῳ (erēmō)	wilderness	G2048=A-DSF	ἔρημος=deserted	NA28+SBL+TR				deserted	#05	G2048					
+Mrk.1.4{1.3}#01=NK(O)	σπλαγχνισθεὶς (splagchnistheis)	having compassion	G4697=V-AOP-NSM	σπλαγχνίζω=to pity	NA28+TR	ὀργισθεὶς (O=orgistheis) being angered - G3710=V-APP-NSM in: SBL			to pity	#01	G4697	G3710				
+Mrk.1.4#02=NKO	ἀλλ᾽ (all᾽)	but	G0235=CONJ	ἀλλά=but	NA28+SBL+TR		SBL: ἀλλὰ ;		but	#02	G0235					

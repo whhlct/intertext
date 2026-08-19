@@ -43,6 +43,37 @@ The importer removes USFM markers from displayed plain text. Strong's annotation
 
 The importer resolves and records the exact Git commit rather than assuming a version tag. XML word, prefix, and suffix elements are retained in semantic segment markup. SBLGNT is configured as `default_source` for its New Testament coverage. It is never represented as an "original edition." MorphGNT is not part of this import.
 
+### TAGNT contextual gloss enrichment
+
+- Repository: `https://github.com/STEPBible/STEPBible-Data.git`
+- Input path: `Translators Amalgamated OT+NT/`
+- Provider: STEP Bible Git repository
+- Format: TAGNT 17-column tab-delimited records
+- Target: the current SBLGNT release and its existing token stream
+- License: Creative Commons Attribution 4.0 International
+
+TAGNT is an enrichment source, not an authoritative text version. It never
+creates or replaces an SBLGNT `TextVersion`, `VersionRelease`, or segment.
+The parser retains source references, surfaces, lemmas, dictionary glosses,
+contextual English glosses, grammatical analysis, edition memberships and
+movement markers, source filenames, and line numbers.
+
+Alignment is performed independently within each canonical verse. Only TAGNT
+readings marked for SBL are considered. Greek comparison is diacritic- and
+punctuation-insensitive and includes explicit movable-nu equivalence, while
+stored SBLGNT surfaces remain unchanged. The aligner uses the complete token
+sequence and tests TAGNT's base and edition-displacement orders. A mismatch or
+more than one possible match fails strict mode; glosses are never attached by
+unchecked row position.
+
+Strict mode is the default. `--allow-partial` skips an entire verse when it
+cannot be aligned uniquely and records its reference and diagnostic in the
+`enrichment_imports` provenance row. This is needed for the current upstream
+combination because TAGNT and SBLGNT have a small number of edition-membership,
+token-boundary, and versification disagreements, including the SBLGNT-bracketed
+Mark 16:9–20 and John 7:53–8:11 passages. No partial glosses are written for a
+skipped verse.
+
 ### Open Scriptures Hebrew Bible / WLC
 
 - Repository: `https://github.com/openscriptures/morphhb.git`
@@ -120,12 +151,14 @@ uv run --package intertext-ingest intertext-ingest import oshb
 uv run --package intertext-ingest intertext-ingest import quran
 uv run --package intertext-ingest intertext-ingest import quran-saheeh-international
 uv run --package intertext-ingest intertext-ingest import sblgnt
+uv run --package intertext-ingest intertext-ingest enrich tagnt-sblgnt --allow-partial
 ```
 
 By default raw artifacts are stored below `data/raw/` and ignored by Git. Use `--raw-dir` to select another archive location. Cached artifacts are reused unless `--refresh` is supplied:
 
 ```bash
 uv run --package intertext-ingest intertext-ingest import sblgnt --refresh
+uv run --package intertext-ingest intertext-ingest enrich tagnt-sblgnt --refresh --allow-partial
 ```
 
 Run ingestion tests with:
@@ -147,9 +180,13 @@ Each raw acquisition has a sidecar `source.json` containing:
 - license;
 - raw artifact path.
 
-The same data is copied into `version_releases.metadata.source`, together with importer and parser versions. HTTP archives are stored by checksum so refreshed downloads do not overwrite older artifacts. Git checkouts retain the resolved commit SHA, and the checksum is computed from a deterministic `git archive` of that commit.
+The same data is copied into `version_releases.metadata.source`, together with importer and parser versions. Enrichment acquisitions are instead copied into `enrichment_imports.metadata.source`, with the target release, alignment edition, parser version, and any skipped-verse diagnostics. HTTP archives are stored by checksum so refreshed downloads do not overwrite older artifacts. Git checkouts retain the resolved commit SHA, and the checksum is computed from a deterministic `git archive` of that commit.
 
 An already imported version/checksum is a no-op. A new checksum creates a new immutable `VersionRelease`, retains the old release and segments, and becomes the sole current release.
+
+An identical enrichment checksum for the same target release is also a no-op.
+A different TAGNT revision creates a separate enrichment provenance record and
+set of `TokenGloss` rows; it does not mutate the SBLGNT release.
 
 ## Extension points
 

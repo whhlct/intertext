@@ -116,6 +116,35 @@ _OSIS_SLUG_BY_ID = {
     "Zech": "zechariah",
     "Mal": "malachi",
 }
+_TAGNT_SLUG_BY_CODE = {
+    "Mat": "matthew",
+    "Mrk": "mark",
+    "Luk": "luke",
+    "Jhn": "john",
+    "Act": "acts",
+    "Rom": "romans",
+    "1Co": "1-corinthians",
+    "2Co": "2-corinthians",
+    "Gal": "galatians",
+    "Eph": "ephesians",
+    "Php": "philippians",
+    "Col": "colossians",
+    "1Th": "1-thessalonians",
+    "2Th": "2-thessalonians",
+    "1Ti": "1-timothy",
+    "2Ti": "2-timothy",
+    "Tit": "titus",
+    "Phm": "philemon",
+    "Heb": "hebrews",
+    "Jas": "james",
+    "1Pe": "1-peter",
+    "2Pe": "2-peter",
+    "1Jn": "1-john",
+    "2Jn": "2-john",
+    "3Jn": "3-john",
+    "Jud": "jude",
+    "Rev": "revelation",
+}
 _BIBLE_LABEL = re.compile(r"^(.+?)\s+(\d+):(\d+)$")
 
 
@@ -149,6 +178,14 @@ def _book_from_source(reference: SourceReference, canon: BibleCanon):
             return canon.books_by_slug[_OSIS_SLUG_BY_ID[book_id]]
         except KeyError as error:
             raise ValueError(f"OSIS book is not in {canon.name}: {book_id}") from error
+    if reference.scheme == "tagnt":
+        book_code = str(reference.components.get("book_code", ""))
+        try:
+            return canon.books_by_slug[_TAGNT_SLUG_BY_CODE[book_code]]
+        except KeyError as error:
+            raise ValueError(
+                f"TAGNT book is not in {canon.name}: {book_code}"
+            ) from error
     raise ValueError(f"Bible mapper cannot resolve source scheme: {reference.scheme}")
 
 

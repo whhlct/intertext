@@ -5,6 +5,7 @@ from intertext_ingest.parsers.oshb_osis import OshbOsisParser
 from intertext_ingest.parsers.quran_pipe_text import QuranPipeTextParser
 from intertext_ingest.parsers.quran_xml import QuranXmlParser
 from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
+from intertext_ingest.parsers.tagnt import TagntParser
 from intertext_ingest.parsers.usfm import UsfmParser
 
 
@@ -100,6 +101,46 @@ def test_oshb_osis_parser_preserves_hebrew_words_and_annotations(
         "morph": "HNcmpa",
         "id": "01QER",
     }
+
+
+def test_tagnt_parser_preserves_readings_glosses_editions_and_provenance(
+    tagnt_source: AcquiredSource,
+) -> None:
+    parsed = TagntParser().parse(tagnt_source)
+
+    assert len(parsed.entries) == 18
+    first = parsed.entries[0]
+    assert first.source_identifier == "Mrk.1.1#01=NKO"
+    assert first.source_reference.scheme == "tagnt"
+    assert first.source_reference.components == {
+        "book_code": "Mrk",
+        "chapter": 1,
+        "verse": 1,
+    }
+    assert first.lemma == "ἀρχή"
+    assert first.normalized_lemma == "αρχη"
+    assert first.dictionary_gloss == "beginning"
+    reading = first.readings[0]
+    assert reading.surface == "Ἀρχὴ"
+    assert reading.contextual_gloss == "[The] beginning"
+    assert reading.editions == ("NA28", "SBL", "TR")
+    assert first.metadata["source_file"] == "TAGNT Mark - fixture.txt"
+    moved = next(
+        entry.readings[0]
+        for entry in parsed.entries
+        if entry.source_identifier == "Mrk.1.3#02=NKO"
+    )
+    assert moved.edition_markers == ("NA28", "SBL»1", "TR")
+    assert moved.displacement == 1
+    meaning_variant = parsed.entries[-2].readings[1]
+    assert parsed.entries[-2].source_reference.label == "Mrk.1.4"
+    assert parsed.entries[-2].metadata["reference_variants"] == "{1.3}"
+    assert meaning_variant.surface == "ὀργισθεὶς"
+    assert meaning_variant.contextual_gloss == "being angered"
+    assert meaning_variant.editions == ("SBL",)
+    spelling_variant = parsed.entries[-1].readings[1]
+    assert spelling_variant.surface == "ἀλλὰ"
+    assert spelling_variant.editions == ("SBL",)
 
 
 def test_quran_xml_parser_preserves_ayah_text_and_structured_attributes(

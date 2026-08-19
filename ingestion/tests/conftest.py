@@ -48,6 +48,22 @@ def oshb_source(source_metadata: SourceMetadata) -> AcquiredSource:
 
 
 @pytest.fixture
+def tagnt_source(source_metadata: SourceMetadata) -> AcquiredSource:
+    metadata = replace(
+        source_metadata,
+        provider="stepbible",
+        source_locator="https://github.com/STEPBible/STEPBible-Data.git",
+        source_revision="tagnt-fixture-commit",
+        sha256=hashlib.sha256(b"fixture-tagnt").hexdigest(),
+        license="CC BY 4.0",
+        textual_version="TAGNT fixture",
+    )
+    return AcquiredSource(
+        FIXTURES / "tagnt" / "Translators Amalgamated OT+NT", metadata
+    )
+
+
+@pytest.fixture
 def quran_source(source_metadata: SourceMetadata) -> AcquiredSource:
     metadata = replace(
         source_metadata,

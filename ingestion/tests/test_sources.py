@@ -8,9 +8,21 @@ from zipfile import ZipFile
 import httpx
 from conftest import FIXTURES
 from intertext_ingest.datasets import detect_oshb_version, detect_sblgnt_version
+from intertext_ingest.enrichments import get_token_enrichment
 from intertext_ingest.sources.git import GitRepositorySource
 from intertext_ingest.sources.http import HttpFileSource, HttpZipSource
 from intertext_ingest.sources.local import LocalSource
+
+
+def test_tagnt_enrichment_uses_generic_git_source_and_official_path() -> None:
+    enrichment = get_token_enrichment("tagnt-sblgnt")
+
+    assert isinstance(enrichment.source, GitRepositorySource)
+    assert enrichment.source.repository_url == (
+        "https://github.com/STEPBible/STEPBible-Data.git"
+    )
+    assert enrichment.source.content_subpath == "Translators Amalgamated OT+NT"
+    assert enrichment.target_version_slug == "sblgnt"
 
 
 def test_http_zip_source_downloads_extracts_and_reuses_checksum_cache(

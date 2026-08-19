@@ -6,17 +6,23 @@ from app import models  # noqa: F401
 from app.db.base import Base
 from app.models import (
     CanonicalUnit,
+    EnrichmentImport,
+    Lexeme,
     PreferredVersion,
     ReferenceLabel,
     SegmentUnitMapping,
     StructureNode,
     Text,
     TextVersion,
+    Token,
+    TokenGloss,
     VersionRelease,
     VersionSegment,
 )
 from intertext_ingest.corpora.quran.validation import QuranVersionValidator
 from intertext_ingest.datasets import get_dataset
+from intertext_ingest.enrichment_pipeline import TokenEnrichmentPipeline
+from intertext_ingest.enrichments import get_token_enrichment
 from intertext_ingest.normalized import AcquiredSource
 from intertext_ingest.pipeline import IngestionPipeline
 from sqlalchemy import create_engine, func, select
@@ -168,6 +174,86 @@ def test_oshb_pipeline_aligns_genesis_and_sets_old_testament_source(
         )
         assert first_mapping is not None
         assert preferred.start_unit_id == first_mapping.canonical_unit_id
+
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
+def test_tagnt_enrichment_populates_sblgnt_tokens_glosses_and_is_idempotent(
+    tmp_path: Path,
+    sblgnt_source: AcquiredSource,
+    tagnt_source: AcquiredSource,
+) -> None:
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    sblgnt = replace(
+        get_dataset("sblgnt"), source=FixtureSource(sblgnt_source)
+    )
+    IngestionPipeline(sessions).run(sblgnt, raw_root=tmp_path)
+    enrichment = replace(
+        get_token_enrichment("tagnt-sblgnt"),
+        source=FixtureSource(tagnt_source),
+    )
+    pipeline = TokenEnrichmentPipeline(sessions)
+
+    first = pipeline.run(enrichment, raw_root=tmp_path)
+    second = pipeline.run(enrichment, raw_root=tmp_path)
+
+    assert first.created is True
+    assert second.created is False
+    assert first.token_count == 15
+    assert first.gloss_count == 15
+    assert first.skipped_verse_count == 0
+    assert second.enrichment_import_id == first.enrichment_import_id
+    with sessions() as session:
+        assert session.scalar(select(func.count(VersionRelease.id))) == 1
+        assert session.scalar(select(func.count(EnrichmentImport.id))) == 1
+        assert session.scalar(select(func.count(Token.id))) == 15
+        assert session.scalar(select(func.count(TokenGloss.id))) == 15
+        assert session.scalar(select(func.count(Lexeme.id))) > 0
+        first_token = session.scalar(
+            select(Token)
+            .join(VersionSegment, VersionSegment.id == Token.segment_id)
+            .where(VersionSegment.source_identifier == "Mark 1:1")
+            .order_by(Token.token_index)
+        )
+        assert first_token is not None
+        assert first_token.surface == "Ἀρχὴ"
+        assert first_token.normalized == "αρχη"
+        assert first_token.metadata_["tagnt"]["source_identifier"] == (
+            "Mrk.1.1#01=NKO"
+        )
+        gloss = session.scalar(
+            select(TokenGloss).where(TokenGloss.token_id == first_token.id)
+        )
+        assert gloss is not None
+        assert gloss.gloss == "[The] beginning"
+        assert gloss.gloss_type == "contextual"
+        assert gloss.source == "TAGNT"
+        assert gloss.metadata_["source_file"] == "TAGNT Mark - fixture.txt"
+        mark_three = list(
+            session.execute(
+                select(Token.surface, TokenGloss.gloss)
+                .join(TokenGloss, TokenGloss.token_id == Token.id)
+                .join(VersionSegment, VersionSegment.id == Token.segment_id)
+                .where(VersionSegment.source_identifier == "Mark 1:3")
+                .order_by(Token.token_index)
+            )
+        )
+        assert mark_three[:3] == [
+            ("φωνὴ", "[The] voice"),
+            ("βοῶντος", "of one crying"),
+            ("ἐν", "in"),
+        ]
+        imported = session.scalar(select(EnrichmentImport))
+        assert imported is not None
+        assert imported.source_revision == "tagnt-fixture-commit"
+        assert imported.metadata_["source"]["license"] == "CC BY 4.0"
 
     Base.metadata.drop_all(engine)
     engine.dispose()
