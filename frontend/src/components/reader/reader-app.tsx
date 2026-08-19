@@ -67,6 +67,9 @@ export function ReaderApp() {
       .map((value) => value.trim())
       .filter(Boolean),
   );
+  const [hasCustomVersionOrder, setHasCustomVersionOrder] = useState(() =>
+    Boolean(initialParameter("versions")),
+  );
   const [selectedBookId, setSelectedBookId] = useState("");
   const [navigationOpen, setNavigationOpen] = useState(false);
 
@@ -139,13 +142,30 @@ export function ReaderApp() {
       return versions
         .filter((version) => version.current_release_id)
         .toSorted((left, right) => {
-          const leftSource = left.version_type === "critical_edition" ? 0 : 1;
-          const rightSource = right.version_type === "critical_edition" ? 0 : 1;
-          return leftSource - rightSource || left.title.localeCompare(right.title);
+          const leftEnglish = left.language.iso_code.toLowerCase() === "en" ? 0 : 1;
+          const rightEnglish =
+            right.language.iso_code.toLowerCase() === "en" ? 0 : 1;
+          return leftEnglish - rightEnglish || left.title.localeCompare(right.title);
         })
         .map((version) => version.slug);
     });
   }, [versions]);
+
+  useEffect(() => {
+    if (hasCustomVersionOrder || !readerQuery.data?.versions.length) return;
+    const sourceSlugs = new Set(
+      readerQuery.data.versions
+        .filter((version) => version.roles.includes("default_source"))
+        .map((version) => version.slug),
+    );
+    setSelectedVersions((current) => {
+      const next = [
+        ...current.filter((slug) => !sourceSlugs.has(slug)),
+        ...current.filter((slug) => sourceSlugs.has(slug)),
+      ];
+      return next.every((slug, index) => slug === current[index]) ? current : next;
+    });
+  }, [hasCustomVersionOrder, readerQuery.data]);
 
   useEffect(() => {
     if (!books.length) return;
@@ -198,6 +218,7 @@ export function ReaderApp() {
     setReference("");
     setReferenceDraft("");
     setSelectedVersions([]);
+    setHasCustomVersionOrder(false);
   }
 
   function changeBook(book: StructureNode) {
@@ -231,6 +252,16 @@ export function ReaderApp() {
           : current.filter((value) => value !== slug)
         : [...current, slug],
     );
+  }
+
+  function reorderVersions(slugs: string[]) {
+    setHasCustomVersionOrder(true);
+    setSelectedVersions((current) => {
+      const selected = new Set(current);
+      const ordered = slugs.filter((slug) => selected.has(slug));
+      const included = new Set(ordered);
+      return [...ordered, ...current.filter((slug) => !included.has(slug))];
+    });
   }
 
   if (textsQuery.isError) {
@@ -371,7 +402,11 @@ export function ReaderApp() {
               onRetry={() => void readerQuery.refetch()}
             />
           ) : readerQuery.data ? (
-            <ReaderGrid reader={readerQuery.data} />
+            <ReaderGrid
+              reader={readerQuery.data}
+              versionOrder={selectedVersions}
+              onVersionOrderChange={reorderVersions}
+            />
           ) : (
             <ReaderSkeleton columns={Math.max(selectedVersions.length, 1)} />
           )}

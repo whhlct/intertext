@@ -207,6 +207,37 @@ select {
   border-left: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
 }
 
+.reader-version-column {
+  transition: background-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+
+.reader-version-column[draggable="true"] {
+  cursor: grab;
+}
+
+.reader-version-column[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.reader-version-column:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.reader-version-column-dragging {
+  opacity: 0.45;
+}
+
+.reader-version-column-target {
+  background: var(--muted);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.version-drag-handle {
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+}
+
 .reader-unit {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }

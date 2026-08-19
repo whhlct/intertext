@@ -14,6 +14,18 @@ interface VersionPickerProps {
 }
 
 export function VersionPicker({ versions, selected, onToggle }: VersionPickerProps) {
+  const selectedOrder = new Map(selected.map((slug, index) => [slug, index]));
+  const orderedVersions = versions.toSorted((left, right) => {
+    const leftIndex = selectedOrder.get(left.slug);
+    const rightIndex = selectedOrder.get(right.slug);
+    if (leftIndex !== undefined && rightIndex !== undefined) {
+      return leftIndex - rightIndex;
+    }
+    if (leftIndex !== undefined) return -1;
+    if (rightIndex !== undefined) return 1;
+    return left.title.localeCompare(right.title);
+  });
+
   return (
     <details className="version-picker relative">
       <summary className="list-none">
@@ -34,7 +46,7 @@ export function VersionPicker({ versions, selected, onToggle }: VersionPickerPro
           </p>
         </div>
         <div className="mt-2 space-y-1">
-          {versions.map((version) => {
+          {orderedVersions.map((version) => {
             const active = selected.includes(version.slug);
             const isLast = active && selected.length === 1;
             return (

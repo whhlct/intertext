@@ -1,6 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
+import { VersionPicker } from "@/components/reader/version-picker";
 import type { ReaderResponse } from "@/types/api";
 
 import { ReaderGrid } from "./reader-grid";
@@ -74,12 +76,72 @@ const reader: ReaderResponse = {
 
 describe("ReaderGrid", () => {
   it("renders aligned versions and canonical text units", () => {
-    render(<ReaderGrid reader={reader} />);
+    render(<ReaderGrid reader={reader} versionOrder={["kjv", "sblgnt"]} />);
 
-    expect(screen.getAllByText("SBL Greek New Testament")).not.toHaveLength(0);
+    const englishHeading = screen.getByText("King James Version");
+    const sourceHeading = screen.getByText("SBL Greek New Testament");
+    expect(
+      englishHeading.compareDocumentPosition(sourceHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByText("Ἀρχὴ τοῦ εὐαγγελίου")).toBeInTheDocument();
     expect(screen.getByText("The beginning of the gospel")).toBeInTheDocument();
     expect(screen.getByLabelText("Unit 1")).toBeInTheDocument();
     expect(screen.getByText("Source")).toBeInTheDocument();
+  });
+
+  it("keeps dragged column order synchronized with the version picker", () => {
+    const reorderableReader = reader;
+    const pickerVersions = reorderableReader.versions.map((version) => ({
+      ...version,
+      version_type: "translation",
+      current_release_id: `${version.id}-release`,
+    }));
+
+    function Harness() {
+      const [order, setOrder] = useState(["kjv", "sblgnt"]);
+      return (
+        <>
+          <VersionPicker
+            versions={pickerVersions}
+            selected={order}
+            onToggle={() => undefined}
+          />
+          <ReaderGrid
+            reader={reorderableReader}
+            versionOrder={order}
+            onVersionOrderChange={setOrder}
+          />
+        </>
+      );
+    }
+
+    const { container } = render(<Harness />);
+    const transferred = new Map<string, string>();
+    const dataTransfer = {
+      effectAllowed: "move",
+      dropEffect: "move",
+      setData: (type: string, value: string) => transferred.set(type, value),
+      getData: (type: string) => transferred.get(type) ?? "",
+    };
+    const harness = within(container);
+    const sourceColumn = harness.getByLabelText(
+      "Move SBL Greek New Testament column",
+    );
+    const targetColumn = harness.getByLabelText("Move King James Version column");
+
+    fireEvent.dragStart(sourceColumn, { dataTransfer });
+    fireEvent.dragOver(targetColumn, { dataTransfer });
+    fireEvent.drop(targetColumn, { dataTransfer });
+
+    const pickerItems = [...container.querySelectorAll(".version-picker button")];
+    expect(pickerItems.map((item) => item.textContent)).toEqual([
+      expect.stringContaining("SBL Greek New Testament"),
+      expect.stringContaining("King James Version"),
+    ]);
+    expect(
+      sourceColumn.compareDocumentPosition(targetColumn) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

@@ -205,7 +205,7 @@ describe("Home", () => {
     expect(screen.getByRole("button", { name: "Mark" })).toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some(([url]) =>
-        String(url).includes("versions=sblgnt%2Ckjv"),
+        String(url).includes("versions=kjv%2Csblgnt"),
       ),
     ).toBe(true);
   });
