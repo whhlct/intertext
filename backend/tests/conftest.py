@@ -1,10 +1,6 @@
 from collections.abc import Generator
 
 import pytest
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app import models  # noqa: F401
 from app.db.base import Base
 from app.db.session import get_db_session
@@ -16,11 +12,15 @@ from app.models import (
     ReferenceLabel,
     ReferenceScheme,
     SegmentUnitMapping,
+    StructureNode,
     Text,
     TextVersion,
     VersionRelease,
     VersionSegment,
 )
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 @pytest.fixture
@@ -79,6 +79,33 @@ def canonical_fixture(database_session: Session) -> None:
     database_session.add_all([unit_one, unit_two, scheme])
     database_session.flush()
     text.default_reference_scheme_id = scheme.id
+    book = StructureNode(
+        text_id=text.id,
+        node_type="book",
+        title="Mark",
+        short_title="Mark",
+        ordinal=41,
+        path="bible.mark",
+        depth=0,
+        start_unit_ordinal=unit_one.ordinal,
+        end_unit_ordinal=unit_two.ordinal,
+    )
+    database_session.add(book)
+    database_session.flush()
+    database_session.add(
+        StructureNode(
+            text_id=text.id,
+            parent_id=book.id,
+            node_type="chapter",
+            title="Mark 1",
+            short_title="1",
+            ordinal=1,
+            path="bible.mark.1",
+            depth=1,
+            start_unit_ordinal=unit_one.ordinal,
+            end_unit_ordinal=unit_two.ordinal,
+        )
+    )
     database_session.add(
         ReferenceLabel(
             reference_scheme_id=scheme.id,

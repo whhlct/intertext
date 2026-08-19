@@ -1,14 +1,11 @@
-import unicodedata
 import uuid
 from collections import defaultdict
 
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import InvalidRequestError, ResourceNotFoundError
-from app.queries.library import get_text_by_slug, select_available_versions
+from app.queries.library import select_available_versions
 from app.queries.reader import (
-    get_unit,
-    resolve_reference_label,
     select_aligned_segments,
     select_canonical_range,
     select_preferred_roles,
@@ -22,47 +19,34 @@ from app.schemas.reader import (
     ReaderUnit,
     ReaderVersion,
 )
+from app.services.references import resolve_reference_range
 
 
-def normalize_reference(reference: str) -> str:
-    normalized = unicodedata.normalize("NFKC", reference)
-    return " ".join(normalized.casefold().split())
+def parse_version_slugs(value: str | None) -> list[str] | None:
+    if value is None:
+        return None
+    parts = [part.strip() for part in value.split(",")]
+    if not parts or any(not part for part in parts):
+        raise InvalidRequestError(
+            "The versions parameter must be a comma-separated list of version slugs."
+        )
+    return list(dict.fromkeys(parts))
 
 
 def get_reader(
     session: Session,
     text_slug: str,
     reference: str,
-    requested_version_slugs: list[str] | None,
+    requested_versions: str | None,
 ) -> ReaderResponse:
-    text = get_text_by_slug(session, text_slug)
-    if text is None:
-        raise ResourceNotFoundError(f"Text '{text_slug}' was not found.")
-
-    label = resolve_reference_label(session, text, normalize_reference(reference))
-    if label is None:
-        raise ResourceNotFoundError(
-            f"Reference '{reference}' was not found in text '{text_slug}'."
-        )
-
-    start_unit = get_unit(session, label.start_unit_id)
-    end_unit = get_unit(session, label.end_unit_id)
-    if (
-        start_unit is None
-        or end_unit is None
-        or start_unit.text_id != text.id
-        or end_unit.text_id != text.id
-        or start_unit.ordinal > end_unit.ordinal
-    ):
-        raise InvalidRequestError(
-            f"Reference '{reference}' has an invalid canonical range."
-        )
-
-    requested_slugs = list(dict.fromkeys(requested_version_slugs or []))
+    resolved = resolve_reference_range(session, text_slug, reference)
+    text = resolved.text
+    label = resolved.label
+    start_unit = resolved.start_unit
+    end_unit = resolved.end_unit
+    requested_slugs = parse_version_slugs(requested_versions) or []
     version_rows = list(
-        session.execute(
-            select_available_versions(text.id, requested_slugs or None)
-        )
+        session.execute(select_available_versions(text.id, requested_slugs or None))
     )
     if requested_slugs:
         rows_by_slug = {row[0].slug: row for row in version_rows}
@@ -90,9 +74,9 @@ def get_reader(
         if role not in roles_by_version[version_id]:
             roles_by_version[version_id].append(role)
 
-    segment_map: dict[
-        uuid.UUID, dict[str, list[ReaderSegment]]
-    ] = defaultdict(lambda: defaultdict(list))
+    segment_map: dict[uuid.UUID, dict[str, list[ReaderSegment]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     if version_rows:
         version_slug_by_release = {
             release.id: version.slug for version, _, release in version_rows

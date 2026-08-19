@@ -15,7 +15,10 @@ def read_reference(
     text_slug: str,
     reference: str,
     session: DatabaseSession,
-    versions: Annotated[list[str] | None, Query(alias="version")] = None,
+    versions: Annotated[
+        str | None,
+        Query(description="Comma-separated version slugs, in response order"),
+    ] = None,
 ) -> ReaderResponse:
     try:
         return get_reader(session, text_slug, reference, versions)
@@ -23,4 +26,3 @@ def read_reference(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except InvalidRequestError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-
