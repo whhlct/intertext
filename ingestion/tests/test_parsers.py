@@ -1,4 +1,7 @@
+import unicodedata
+
 from intertext_ingest.normalized import AcquiredSource
+from intertext_ingest.parsers.oshb_osis import OshbOsisParser
 from intertext_ingest.parsers.quran_pipe_text import QuranPipeTextParser
 from intertext_ingest.parsers.quran_xml import QuranXmlParser
 from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
@@ -53,6 +56,50 @@ def test_sblgnt_xml_parser_emits_source_references(
         "w",
     }
     assert not hasattr(parsed, "language_iso")
+
+
+def test_oshb_osis_parser_preserves_hebrew_words_and_annotations(
+    oshb_source: AcquiredSource,
+) -> None:
+    parsed = OshbOsisParser().parse(oshb_source)
+
+    assert len(parsed.segments) == 3
+    first = parsed.segments[0]
+    assert first.source_reference.scheme == "oshb_osis"
+    assert first.source_reference.components == {
+        "book_id": "Gen",
+        "chapter": 1,
+        "verse": 1,
+    }
+    assert first.text == (
+        "בְּרֵאשִׁ֖ית בָּרָ֣א אֱלֹהִ֑ים אֵ֥ת הַשָּׁמַ֖יִם וְאֵ֥ת הָאָֽרֶץ׃"
+    )
+    first_word = first.tokens[0]
+    assert first_word.surface == "בְּ/רֵאשִׁ֖ית"
+    assert unicodedata.normalize("NFC", first_word.surface) != first_word.surface
+    assert first_word.metadata == {
+        "source_id": "01xeN",
+        "lemma": "b/7225",
+        "morphology": "HR/Ncfsa",
+        "cantillation_hierarchy": "1.0",
+        "osis_attributes": {
+            "lemma": "b/7225",
+            "n": "1.0",
+            "morph": "HR/Ncfsa",
+            "id": "01xeN",
+        },
+    }
+    assert first.content_markup["unicode_normalization"] == "none"
+    assert parsed.segments[1].text.endswith("עַל־פְּנֵ֣י הַמָּֽיִם׃")
+    assert "Fixture note" not in parsed.segments[1].text
+    variant = parsed.segments[1].content_markup["elements"][-1]
+    qere_word = variant["children"][1]["children"][0]
+    assert qere_word["attributes"] == {
+        "lemma": "4325",
+        "n": "0",
+        "morph": "HNcmpa",
+        "id": "01QER",
+    }
 
 
 def test_quran_xml_parser_preserves_ayah_text_and_structured_attributes(

@@ -8,6 +8,7 @@ from intertext_ingest.corpora.bible.validation import BibleVersionValidator
 from intertext_ingest.corpora.quran import QuranMapper, QuranVersionValidator
 from intertext_ingest.normalized import VersionDefinition
 from intertext_ingest.parsers.base import SourceParser
+from intertext_ingest.parsers.oshb_osis import OshbOsisParser
 from intertext_ingest.parsers.quran_pipe_text import QuranPipeTextParser
 from intertext_ingest.parsers.quran_xml import QuranXmlParser
 from intertext_ingest.parsers.sblgnt_xml import SblgntXmlParser
@@ -35,6 +36,10 @@ MARK_ONE_REQUIRED = (
 )
 
 _SBLGNT_VERSION = re.compile(r"<tr><td>v(\d+(?:\.\d+)+)</td>", re.IGNORECASE)
+_OSHB_WLC_VERSION = re.compile(r"Updated to WLC version ([\d.]+)\.")
+_OSHB_MORPHOLOGY_RELEASE = re.compile(
+    r"<date>([\d.]+)</date>\s*<p>Release of full morphology</p>"
+)
 
 TANZIL_QURAN_SIMPLE_URL = (
     "https://tanzil.net/pub/download/index.php?marks=true&sajdah=true&"
@@ -51,6 +56,21 @@ def detect_sblgnt_version(repository_path: Path) -> str | None:
         return None
     match = _SBLGNT_VERSION.search(readme_path.read_text(encoding="utf-8"))
     return match.group(1) if match is not None else None
+
+
+def detect_oshb_version(repository_path: Path) -> str | None:
+    genesis_path = repository_path / "wlc" / "Gen.xml"
+    if not genesis_path.is_file():
+        return None
+    source = genesis_path.read_text(encoding="utf-8")
+    wlc = _OSHB_WLC_VERSION.search(source)
+    morphology = _OSHB_MORPHOLOGY_RELEASE.search(source)
+    parts = []
+    if wlc is not None:
+        parts.append(f"WLC {wlc.group(1)}")
+    if morphology is not None:
+        parts.append(f"OSHB morphology {morphology.group(1)}")
+    return " / ".join(parts) or None
 
 
 def _bible_mapper() -> BibleMapper:
@@ -125,6 +145,50 @@ def get_dataset(name: str) -> DatasetDefinition:
             corpus_validator=BibleVersionValidator(
                 required_canonical_keys=MARK_ONE_REQUIRED,
                 expected_testament="new",
+            ),
+            preferred_role="default_source",
+        )
+    if name == "oshb":
+        return DatasetDefinition(
+            name="oshb",
+            source=GitRepositorySource(
+                identifier="morphhb",
+                provider="open-scriptures",
+                repository_url="https://github.com/openscriptures/morphhb.git",
+                license=(
+                    "WLC text is Public Domain; OSHB lemma and morphology data "
+                    "are CC BY 4.0"
+                ),
+                content_subpath="wlc",
+                textual_version="WLC 4.20 / OSHB morphology 2018.12.14",
+                textual_version_resolver=detect_oshb_version,
+            ),
+            parser=OshbOsisParser(),
+            version=VersionDefinition(
+                slug="oshb",
+                title="Open Scriptures Hebrew Bible (WLC)",
+                abbreviation="OSHB",
+                language_iso="hbo",
+                language_name="Biblical Hebrew",
+                language_native_name="עברית מקראית",
+                script="Hebr",
+                direction="rtl",
+                version_type="digital_edition",
+                publisher="Open Scriptures Hebrew Bible Project",
+                rights_statement=(
+                    "Westminster Leningrad Codex text is Public Domain. OSHB "
+                    "lemma and morphology data are licensed CC BY 4.0; credit "
+                    "the Open Scriptures Hebrew Bible Project."
+                ),
+            ),
+            corpus_mapper=_bible_mapper(),
+            corpus_validator=BibleVersionValidator(
+                required_canonical_keys=(
+                    "bible.genesis.1.1",
+                    "bible.genesis.1.2",
+                    "bible.genesis.1.3",
+                ),
+                expected_testament="old",
             ),
             preferred_role="default_source",
         )
@@ -205,6 +269,6 @@ def get_dataset(name: str) -> DatasetDefinition:
             corpus_validator=QuranVersionValidator(),
         )
     raise ValueError(
-        f"Unsupported dataset '{name}'. Expected one of: kjv, quran, "
+        f"Unsupported dataset '{name}'. Expected one of: kjv, oshb, quran, "
         "quran-saheeh-international, sblgnt"
     )

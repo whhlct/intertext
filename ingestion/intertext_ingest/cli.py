@@ -20,7 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     import_parser.add_argument(
         "dataset",
-        choices=("kjv", "quran", "quran-saheeh-international", "sblgnt"),
+        choices=("kjv", "oshb", "quran", "quran-saheeh-international", "sblgnt"),
     )
     import_parser.add_argument(
         "--raw-dir",

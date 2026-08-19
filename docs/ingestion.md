@@ -13,7 +13,7 @@ source acquisition
     → validation
 ```
 
-Providers, formats, and corpora are independent. The eBible adapter happens to deliver USFM, the Faithlife Git adapter happens to deliver SBLGNT XML, and Tanzil happens to deliver Quran XML. Format parsers emit format-native `SourceReference` values and do not construct Intertext canonical references. The responsible corpus mapper interprets those values and emits resolved canonical targets. Persistence receives only the resolved version and canonical unit IDs; it contains no provider-, format-, or corpus-specific behavior.
+Providers, formats, and corpora are independent. The eBible adapter happens to deliver USFM, the Faithlife Git adapter delivers SBLGNT XML, the Open Scriptures Git adapter delivers OSIS XML, and Tanzil delivers Quran XML and pipe-delimited translation text. Format parsers emit format-native `SourceReference` values and do not construct Intertext canonical references. The responsible corpus mapper interprets those values and emits resolved canonical targets. Persistence receives only the resolved version and canonical unit IDs; it contains no provider-, format-, or corpus-specific behavior.
 
 Corpus resolution happens before persistence. Consequently both `MRK 1:1` from USFM and `Mark 1:1` from SBLGNT persist as the canonical segment identifier `Mark 1:1`, target `bible.mark.1.1`, and structure path `bible.mark.1`. Parser-native identifiers remain confined to the in-memory parsed representation and the preserved raw artifact.
 
@@ -42,6 +42,35 @@ The importer removes USFM markers from displayed plain text. Strong's annotation
 - License: Creative Commons Attribution 4.0 International
 
 The importer resolves and records the exact Git commit rather than assuming a version tag. XML word, prefix, and suffix elements are retained in semantic segment markup. SBLGNT is configured as `default_source` for its New Testament coverage. It is never represented as an "original edition." MorphGNT is not part of this import.
+
+### Open Scriptures Hebrew Bible / WLC
+
+- Repository: `https://github.com/openscriptures/morphhb.git`
+- Input path: `wlc/`
+- Provider: Open Scriptures Git repository
+- Format: OSIS XML using the OSHB profile
+- Source metadata: WLC 4.20 and the repository's 2018.12.14 full-morphology release
+- License: WLC text is Public Domain; OSHB lemma and morphology data are CC BY 4.0
+
+The importer records the resolved Git commit and a deterministic checksum of
+that commit. OSIS book identifiers remain parser-native until `BibleMapper`
+resolves them to Intertext Bible book, chapter, and verse units. The version is
+configured as `default_source` across its Old Testament coverage.
+
+OSHB word surfaces, immutable word IDs, lemmas, morphology, optional `n`
+cantillation-hierarchy values, ketiv/qere structures, notes, and OSIS
+attributes are retained in normalized token and semantic-markup records. Token
+tables are not populated yet. Display text removes only the source's `/`
+morpheme delimiter and applies spacing around OSIS segments such as maqqef; the
+raw word surface remains available in markup. No Unicode normalization,
+including NFC, is applied because reordering Hebrew points and cantillation
+marks would change the authoritative encoding.
+
+References currently preserve the WLC/MT chapter and verse numbering expressed
+by the OSIS files. The repository's separate `VerseMap.xml` documents places
+where this differs from KJV numbering; segment-level cross-versification for
+those exceptional ranges should be modeled as explicit many-to-many mappings
+rather than rewriting the source text.
 
 ### Tanzil Quran Text (Simple)
 
@@ -87,6 +116,7 @@ docker compose up -d postgres
 uv sync --all-packages --frozen
 uv run --package intertext-backend alembic --config backend/alembic.ini upgrade head
 uv run --package intertext-ingest intertext-ingest import kjv
+uv run --package intertext-ingest intertext-ingest import oshb
 uv run --package intertext-ingest intertext-ingest import quran
 uv run --package intertext-ingest intertext-ingest import quran-saheeh-international
 uv run --package intertext-ingest intertext-ingest import sblgnt

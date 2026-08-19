@@ -7,7 +7,7 @@ from zipfile import ZipFile
 
 import httpx
 from conftest import FIXTURES
-from intertext_ingest.datasets import detect_sblgnt_version
+from intertext_ingest.datasets import detect_oshb_version, detect_sblgnt_version
 from intertext_ingest.sources.git import GitRepositorySource
 from intertext_ingest.sources.http import HttpFileSource, HttpZipSource
 from intertext_ingest.sources.local import LocalSource
@@ -139,6 +139,14 @@ def test_git_source_records_commit_and_archive_checksum(tmp_path: Path) -> None:
     assert acquired.metadata.textual_version == "1.2"
     assert acquired.content_path.joinpath("Mark.xml").is_file()
     assert cached.metadata == acquired.metadata
+
+
+def test_oshb_textual_version_is_detected_from_osis_metadata() -> None:
+    repository = FIXTURES / "oshb"
+
+    assert detect_oshb_version(repository) == (
+        "WLC 4.20 / OSHB morphology 2018.12.14"
+    )
 
 
 def test_local_source_copies_artifact_and_records_provenance(tmp_path: Path) -> None:

@@ -114,6 +114,65 @@ def test_pipeline_maps_persists_and_is_idempotent(
     engine.dispose()
 
 
+def test_oshb_pipeline_aligns_genesis_and_sets_old_testament_source(
+    tmp_path: Path,
+    oshb_source: AcquiredSource,
+) -> None:
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    pipeline = IngestionPipeline(sessions)
+    oshb = replace(get_dataset("oshb"), source=FixtureSource(oshb_source))
+
+    first = pipeline.run(oshb, raw_root=tmp_path)
+    second = pipeline.run(oshb, raw_root=tmp_path)
+
+    assert first.created is True
+    assert second.created is False
+    assert first.segment_count == 3
+    assert first.mapping_count == 3
+    with sessions() as session:
+        assert set(session.scalars(select(CanonicalUnit.internal_key))) == {
+            "bible.genesis.1.1",
+            "bible.genesis.1.2",
+            "bible.genesis.1.3",
+        }
+        segments = list(
+            session.scalars(select(VersionSegment).order_by(VersionSegment.sequence))
+        )
+        assert [segment.source_identifier for segment in segments] == [
+            "Genesis 1:1",
+            "Genesis 1:2",
+            "Genesis 1:3",
+        ]
+        assert segments[0].text_plain.startswith("בְּרֵאשִׁ֖ית בָּרָ֣א")
+        first_word = segments[0].content_markup["elements"][0]
+        assert first_word["id"] == "01xeN"
+        assert first_word["lemma"] == "b/7225"
+        assert first_word["morphology"] == "HR/Ncfsa"
+        assert first_word["cantillation_hierarchy"] == "1.0"
+        preferred = session.scalar(select(PreferredVersion))
+        assert preferred is not None
+        assert preferred.role == "default_source"
+        version = session.get(TextVersion, preferred.version_id)
+        assert version is not None
+        assert version.slug == "oshb"
+        first_mapping = session.scalar(
+            select(SegmentUnitMapping).where(
+                SegmentUnitMapping.segment_id == segments[0].id
+            )
+        )
+        assert first_mapping is not None
+        assert preferred.start_unit_id == first_mapping.canonical_unit_id
+
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
 def test_quran_pipeline_maps_persists_and_is_idempotent(
     tmp_path: Path,
     quran_source: AcquiredSource,

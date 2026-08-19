@@ -160,6 +160,7 @@ Run ingestion commands:
 
 ```bash
 uv run --package intertext-ingest intertext-ingest import kjv
+uv run --package intertext-ingest intertext-ingest import oshb
 uv run --package intertext-ingest intertext-ingest import quran
 uv run --package intertext-ingest intertext-ingest import quran-saheeh-international
 uv run --package intertext-ingest intertext-ingest import sblgnt

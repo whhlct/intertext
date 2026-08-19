@@ -38,6 +38,16 @@ def sblgnt_source(source_metadata: SourceMetadata) -> AcquiredSource:
 
 
 @pytest.fixture
+def oshb_source(source_metadata: SourceMetadata) -> AcquiredSource:
+    metadata = replace(
+        source_metadata,
+        sha256=hashlib.sha256(b"fixture-oshb").hexdigest(),
+        textual_version="WLC 4.20 / OSHB morphology 2018.12.14",
+    )
+    return AcquiredSource(FIXTURES / "oshb" / "wlc", metadata)
+
+
+@pytest.fixture
 def quran_source(source_metadata: SourceMetadata) -> AcquiredSource:
     metadata = replace(
         source_metadata,

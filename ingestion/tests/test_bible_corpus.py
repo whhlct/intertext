@@ -18,6 +18,11 @@ def test_bible_corpus_maps_distinct_source_schemes_to_one_canonical_reference() 
         label="Mark 1:1",
         components={"book_name": "Mark", "chapter": 1, "verse": 1},
     )
+    oshb = SourceReference(
+        scheme="oshb_osis",
+        label="Gen.1.1",
+        components={"book_id": "Gen", "chapter": 1, "verse": 1},
+    )
 
     usfm_reference = resolve_bible_reference(usfm, PROTESTANT_66_CANON)
     sblgnt_reference = resolve_bible_reference(sblgnt, PROTESTANT_66_CANON)
@@ -27,6 +32,9 @@ def test_bible_corpus_maps_distinct_source_schemes_to_one_canonical_reference() 
     assert usfm_reference.components["book_slug"] == "mark"
     assert "book_code" not in usfm_reference.components
     assert PROTESTANT_66_CANON.identifier == "protestant-66"
+    oshb_reference = resolve_bible_reference(oshb, PROTESTANT_66_CANON)
+    assert oshb_reference.key == "bible.genesis.1.1"
+    assert oshb_reference.label == "Genesis 1:1"
 
 
 def test_bible_reference_aliases_belong_to_the_corpus_layer() -> None:

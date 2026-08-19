@@ -75,6 +75,47 @@ _USFM_CODES = (
 _USFM_SLUG_BY_CODE = {
     code: book.slug for code, book in zip(_USFM_CODES, PROTESTANT_66_CANON.books)
 }
+_OSIS_SLUG_BY_ID = {
+    "Gen": "genesis",
+    "Exod": "exodus",
+    "Lev": "leviticus",
+    "Num": "numbers",
+    "Deut": "deuteronomy",
+    "Josh": "joshua",
+    "Judg": "judges",
+    "Ruth": "ruth",
+    "1Sam": "1-samuel",
+    "2Sam": "2-samuel",
+    "1Kgs": "1-kings",
+    "2Kgs": "2-kings",
+    "1Chr": "1-chronicles",
+    "2Chr": "2-chronicles",
+    "Ezra": "ezra",
+    "Neh": "nehemiah",
+    "Esth": "esther",
+    "Job": "job",
+    "Ps": "psalms",
+    "Prov": "proverbs",
+    "Eccl": "ecclesiastes",
+    "Song": "song-of-solomon",
+    "Isa": "isaiah",
+    "Jer": "jeremiah",
+    "Lam": "lamentations",
+    "Ezek": "ezekiel",
+    "Dan": "daniel",
+    "Hos": "hosea",
+    "Joel": "joel",
+    "Amos": "amos",
+    "Obad": "obadiah",
+    "Jonah": "jonah",
+    "Mic": "micah",
+    "Nah": "nahum",
+    "Hab": "habakkuk",
+    "Zeph": "zephaniah",
+    "Hag": "haggai",
+    "Zech": "zechariah",
+    "Mal": "malachi",
+}
 _BIBLE_LABEL = re.compile(r"^(.+?)\s+(\d+):(\d+)$")
 
 
@@ -102,6 +143,12 @@ def _book_from_source(reference: SourceReference, canon: BibleCanon):
             raise ValueError(f"USFM book is not in {canon.name}: {code}") from error
     if reference.scheme == "sblgnt":
         return book_from_name(str(reference.components.get("book_name", "")), canon)
+    if reference.scheme == "oshb_osis":
+        book_id = str(reference.components.get("book_id", ""))
+        try:
+            return canon.books_by_slug[_OSIS_SLUG_BY_ID[book_id]]
+        except KeyError as error:
+            raise ValueError(f"OSIS book is not in {canon.name}: {book_id}") from error
     raise ValueError(f"Bible mapper cannot resolve source scheme: {reference.scheme}")
 
 
