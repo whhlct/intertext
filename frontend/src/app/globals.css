@@ -166,12 +166,6 @@ select {
   line-height: 0.95;
 }
 
-.reader-heading p {
-  margin: 0.9rem 0 0;
-  color: var(--muted-foreground);
-  font-size: 0.82rem;
-}
-
 .heading-mark {
   display: flex;
   width: 3.25rem;

@@ -367,11 +367,6 @@ export function ReaderApp() {
                 ) : null}
               </div>
               <h1>{resolvedLabel || "Choose a passage"}</h1>
-              <p>
-                {readerQuery.data
-                  ? `${readerQuery.data.units.length} canonical units · ${readerQuery.data.versions.length} aligned editions`
-                  : "Select a section or enter a reference to begin reading."}
-              </p>
             </div>
             <div className="heading-mark" aria-hidden="true">
               <BookOpen className="size-5" />
