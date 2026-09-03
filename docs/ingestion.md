@@ -143,7 +143,7 @@ role.
 From the repository root:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d db
 uv sync --all-packages --frozen
 uv run --package intertext-backend alembic --config backend/alembic.ini upgrade head
 uv run --package intertext-ingest intertext-ingest import kjv

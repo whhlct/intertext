@@ -195,10 +195,10 @@ uv sync --all-packages --frozen
 npm --prefix frontend ci
 ```
 
-Start PostgreSQL, then apply database migrations:
+For a host-run backend, start PostgreSQL, then apply database migrations:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d db
 uv run --package intertext-backend alembic --config backend/alembic.ini upgrade head
 ```
 
@@ -221,6 +221,51 @@ to use another backend origin.
 Reader selections are reflected in the URL (`text`, `reference`, and
 `versions`), so a comparison can be bookmarked or shared.
 
+### Docker development
+
+The complete development stack runs in containers using the root `.env`:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+For automatic source synchronization and hot reload, use Compose Watch:
+
+```bash
+docker compose up --watch --build
+```
+
+Python and TypeScript source changes are synchronized without rebuilding.
+Changes to `uv.lock`, Python workspace manifests, `package.json`, or
+`package-lock.json` rebuild the affected image. Generated directories such as
+`.venv`, `node_modules`, and `.next` are neither sent in the build context nor
+synchronized into containers.
+
+The browser opens `http://localhost:${FRONTEND_PORT}` and makes same-origin API
+requests. Inside Compose, Next.js proxies those requests to `backend:8000`, and
+the backend connects to PostgreSQL at `db:5432`. `BACKEND_PORT` exposes the API
+directly to host tools without making the browser depend on an internal service
+name.
+
+### Docker production targets
+
+Both application Dockerfiles have `development` and `production` targets. The
+production backend contains the locked runtime dependencies without uv or test
+dependencies. The production frontend runs Next.js standalone output without
+the build-time dependency tree.
+
+Build and start the production targets locally with:
+
+```bash
+INTERTEXT_BUILD_TARGET=production docker compose up -d --build
+```
+
+Set a non-example `POSTGRES_PASSWORD` and matching database URLs before using
+this configuration outside local development. The Compose file is suitable as
+a production-image smoke-test; deployment platforms should normally provide
+managed secrets, persistent database storage, TLS, and an external ingress.
+
 Run the Phase 0 checks:
 
 ```bash
@@ -232,7 +277,7 @@ docker compose config --quiet
 uv lock --check
 ```
 
-Stop PostgreSQL without deleting its named data volume:
+Stop the Compose stack without deleting its named PostgreSQL data volume:
 
 ```bash
 docker compose down
