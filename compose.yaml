@@ -1,3 +1,5 @@
+# Compose reads the ignored root .env for interpolation. Keep service
+# environment blocks explicit so each container receives only what it needs.
 services:
   db:
     image: postgres:17-alpine
