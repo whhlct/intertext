@@ -21,7 +21,7 @@ intertext/
 ├── .python-version
 ├── pyproject.toml
 ├── uv.lock
-├── docker-compose.yml
+├── compose.yaml
 ├── Makefile
 │
 ├── frontend/
@@ -290,7 +290,7 @@ intertext/
 ├── .python-version
 ├── pyproject.toml
 ├── uv.lock
-├── docker-compose.yml
+├── compose.yaml
 │
 ├── frontend/
 │
